@@ -2,9 +2,9 @@ name: CI Backend
 
 on:
   push:
-    branches: [ "master", "development" ]
+    branches: [ "master", "Development" ]
   pull_request:
-    branches: [ "master", "development" ]
+    branches: [ "master", "Development" ]
     
 permissions:
   contents: write
