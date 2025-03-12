@@ -2,6 +2,7 @@ using FirebaseAdmin;
 using FirebaseAdmin.Auth;
 using Google.Apis.Auth.OAuth2;
 using LBCore.Interfaces;
+using LBCore.Managers;
 using LBRepository.Repos;
 using Microsoft.AspNetCore.Builder.Extensions;
 
@@ -22,6 +23,18 @@ builder.Services.AddScoped<FirebaseAuth>(_ => FirebaseAuth.DefaultInstance);
 
 // Dependency Injection for Repositories and Managers
 builder.Services.AddScoped<IFirebaseAccountRepos, FirebaseAccountRepos>();
+builder.Services.AddScoped<FirebaseManager>();
+
+builder.Services.AddAuthentication("Firebase")
+	.AddCookie("Firebase"); // Use cookie-based authentication for user sessions
+
+builder.Services.AddAuthorization(options =>
+{
+	options.AddPolicy("RequireAuthenticatedUser", policy =>
+	{
+		policy.RequireAuthenticatedUser();
+	});
+});
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
