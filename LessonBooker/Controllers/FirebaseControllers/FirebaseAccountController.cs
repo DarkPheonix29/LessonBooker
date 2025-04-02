@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
-namespace ScheduleApp.API.Controllers
+namespace LessonBooker.Controllers.FirebaseControllers
 {
 	[Route("api/[controller]")]
 	[ApiController]
