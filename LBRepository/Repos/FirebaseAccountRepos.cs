@@ -1,20 +1,22 @@
 ﻿using FirebaseAdmin.Auth;
+using Google.Cloud.Firestore;
+using LBCore;
 using LBCore.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace LBRepository.Repos
 {
-    public class FirebaseAccountRepos : IFirebaseAccountRepos
-    {
+	public class FirebaseAccountRepos : IFirebaseAccountRepos
+	{
 		private readonly FirebaseAuth _auth;
+		private readonly FirestoreDb _firestoreDb;
 
 		public FirebaseAccountRepos(FirebaseAuth auth)
 		{
-			_auth = auth;
+			_auth = auth ?? throw new ArgumentNullException(nameof(auth));
+			_firestoreDb = FirestoreFactory.GetFirestoreDb();
 		}
 
 		public async Task LogoutUserAsync(string uid)
@@ -39,13 +41,21 @@ namespace LBRepository.Repos
 		{
 			try
 			{
-				var userRecordArgs = new UserRecordArgs
+				var user = await _auth.CreateUserAsync(new UserRecordArgs
 				{
 					Email = email,
 					Password = password
-				};
-				var user = await _auth.CreateUserAsync(userRecordArgs);
+				});
+
 				await AssignRoleAsync(user.Uid, role);
+
+				var userDoc = _firestoreDb.Collection("users").Document(user.Uid);
+				await userDoc.SetAsync(new
+				{
+					email = email,
+					role = role
+				});
+
 				return user;
 			}
 			catch (Exception ex)

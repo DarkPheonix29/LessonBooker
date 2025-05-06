@@ -5,47 +5,45 @@ using LBCore.Interfaces;
 using LBCore.Managers;
 using LBRepository.Repos;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
-using System.IO;
 using LBRepository;
+using Microsoft.Extensions.Logging;
+using BLL.Firebase;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // --- Firebase Initialization ---
-var firebaseKeyPath = Environment.GetEnvironmentVariable("FIREBASE_KEY_PATH") ?? builder.Configuration["Firebase:ServiceAccountKeyPath"];
-if (string.IsNullOrEmpty(firebaseKeyPath) || !File.Exists(firebaseKeyPath))
-{
-	throw new FileNotFoundException($"Firebase service account key file not found at '{firebaseKeyPath}'");
-}
+FirebaseConfig.InitializeFirebase();
 
-// Initialize Firebase SDK with credentials
-FirebaseApp.Create(new AppOptions
-{
-	Credential = GoogleCredential.FromFile(firebaseKeyPath)
-});
 
+// Register FirebaseAuth for DI
 builder.Services.AddScoped<FirebaseAuth>(_ => FirebaseAuth.DefaultInstance);
 
 // --- Add DbContext Configuration ---
 var connectionString = builder.Configuration.GetConnectionString("LocalPostgres");
-
-// Determine which database to use: PostgreSQL for local or Cloud SQL for production
 var env = builder.Environment.EnvironmentName;
+
 if (env == "Development")
 {
 	builder.Services.AddDbContext<ApplicationDbContext>(options =>
-		options.UseNpgsql(connectionString)); // PostgreSQL for local development
+		options.UseNpgsql(connectionString));
 }
-
+else
+{
+	// ?? TODO: Add production DB connection here
+	throw new InvalidOperationException("Production database configuration not defined.");
+}
 
 // --- Dependency Injection for Repositories and Managers ---
 builder.Services.AddScoped<IFirebaseAccountRepos, FirebaseAccountRepos>();
 builder.Services.AddScoped<FirebaseManager>();
+builder.Services.AddScoped<AccountManager>();
+builder.Services.AddScoped<IFirebaseKeyRepos, FirebaseKeyRepos>();
+builder.Services.AddScoped<IProfileRepos, ProfileRepos>();
 
 // --- Authentication and Authorization ---
 builder.Services.AddAuthentication("Firebase")
-	.AddCookie("Firebase"); // Cookie-based authentication for user sessions
+	.AddCookie("Firebase");
 
 builder.Services.AddAuthorization(options =>
 {
@@ -55,35 +53,27 @@ builder.Services.AddAuthorization(options =>
 	});
 });
 
-// --- Add Controllers and Services ---
+// --- Add Controllers and Swagger ---
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Configure Swagger for API documentation
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
 builder.Services.AddSwaggerGen(c =>
 {
 	c.SwaggerDoc("v1", new OpenApiInfo { Title = "Lesson Booker API", Version = "v1" });
 });
 
+// --- Build and Configure the HTTP Request Pipeline ---
 var app = builder.Build();
 
-// --- Apply Migrations at Startup ---
 using (var scope = app.Services.CreateScope())
 {
 	var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-	try
-	{
-		context.Database.Migrate(); // Apply pending migrations automatically at startup
-	}
-	catch (Exception ex)
-	{
-		// Log migration error if any
-		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-		logger.LogError(ex, "An error occurred applying the migrations.");
-	}
+	context.Database.Migrate();
 }
 
-// --- Configure the HTTP request pipeline ---
 if (app.Environment.IsDevelopment())
 {
 	app.UseSwagger();
@@ -91,10 +81,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.UseAuthentication(); // Enable Authentication Middleware
-app.UseAuthorization();  // Enable Authorization Middleware
-
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
