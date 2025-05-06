@@ -16,11 +16,7 @@ namespace LBCore.Managers
 		public async Task<Profiles> GetProfileByEmailAsync(string email)
 		{
 			var profile = await _profileRepos.GetProfileByEmailAsync(email);
-			if (profile == null)
-			{
-				throw new Exception("Profile not found.");
-			}
-			return profile;
+			return profile; // Return null if profile is not found
 		}
 
 		// Get all profiles

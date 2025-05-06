@@ -16,15 +16,9 @@ namespace LBRepository.Repos
 		// Get profile by email
 		public async Task<Profiles> GetProfileByEmailAsync(string email)
 		{
-			var profile = await _context.Profile
+			// Return profile or null if not found (no exception thrown)
+			return await _context.Profile
 				.FirstOrDefaultAsync(p => p.Email == email);
-
-			if (profile == null)
-			{
-				throw new Exception("Profile not found.");
-			}
-
-			return profile;
 		}
 
 		// Get all profiles
@@ -36,6 +30,10 @@ namespace LBRepository.Repos
 		// Add a new profile
 		public async Task AddProfileAsync(Profiles profile)
 		{
+			// Convert DateOfBirth to UTC before saving
+			profile.DateOfBirth = profile.DateOfBirth.ToUniversalTime();
+
+			// Check if profile already exists by email
 			var existingProfile = await _context.Profile
 				.FirstOrDefaultAsync(p => p.Email == profile.Email);
 
@@ -44,6 +42,7 @@ namespace LBRepository.Repos
 				throw new Exception("Profile already exists with this email.");
 			}
 
+			// Add the new profile if not exists
 			await _context.Profile.AddAsync(profile);
 			await _context.SaveChangesAsync();
 		}
@@ -51,6 +50,10 @@ namespace LBRepository.Repos
 		// Update an existing profile
 		public async Task UpdateProfileAsync(Profiles profile)
 		{
+			// Convert DateOfBirth to UTC before saving
+			profile.DateOfBirth = profile.DateOfBirth.ToUniversalTime();
+
+			// Find the existing profile by ProfileId
 			var existingProfile = await _context.Profile
 				.FirstOrDefaultAsync(p => p.ProfileId == profile.ProfileId);
 
@@ -67,7 +70,9 @@ namespace LBRepository.Repos
 			existingProfile.PickupAddress = profile.PickupAddress;
 			existingProfile.DateOfBirth = profile.DateOfBirth;
 
+			// Save changes
 			await _context.SaveChangesAsync();
 		}
 	}
 }
+

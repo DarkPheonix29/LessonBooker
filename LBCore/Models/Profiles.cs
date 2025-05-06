@@ -9,9 +9,6 @@ namespace LBCore.Models
 		[Key]
 		[DatabaseGenerated(DatabaseGeneratedOption.Identity)]
 		public int ProfileId { get; set; }
-
-		[Required]
-		public string Role { get; set; }
 		[Required]
 		public string DisplayName { get; set; }
 

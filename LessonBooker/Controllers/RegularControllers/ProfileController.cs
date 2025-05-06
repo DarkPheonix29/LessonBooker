@@ -2,6 +2,7 @@
 using LBCore.Models;
 using LBCore.Managers;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace LBAPI.Controllers
 {
@@ -10,10 +11,12 @@ namespace LBAPI.Controllers
 	public class ProfileController : ControllerBase
 	{
 		private readonly AccountManager _accountManager;
+		private readonly ILogger<ProfileController> _logger;
 
-		public ProfileController(AccountManager accountManager)
+		public ProfileController(AccountManager accountManager, ILogger<ProfileController> logger)
 		{
 			_accountManager = accountManager;
+			_logger = logger;
 		}
 
 		// Get profile by email
@@ -23,11 +26,17 @@ namespace LBAPI.Controllers
 			try
 			{
 				var profile = await _accountManager.GetProfileByEmailAsync(email);
+				if (profile == null)
+				{
+					return NotFound(new { message = "Profile not found." });
+				}
+
 				return Ok(profile);
 			}
-			catch (System.Exception)
+			catch (Exception ex)
 			{
-				return NotFound(); // Profile not found
+				_logger.LogError(ex, "Error retrieving profile for email: {Email}", email);
+				return StatusCode(500, "Internal server error");
 			}
 		}
 
@@ -45,25 +54,32 @@ namespace LBAPI.Controllers
 		{
 			if (profile == null)
 			{
+				_logger.LogWarning("Profile object received is null.");
 				return BadRequest("Profile data is required.");
 			}
 
 			try
 			{
-				await _accountManager.AddProfileAsync(profile);
-				return CreatedAtAction(nameof(GetProfileByEmail), new { email = profile.Email }, profile);
-			}
-			catch (System.Exception ex)
-			{
-				if (ex.Message.Contains("Profile already exists"))
+				_logger.LogInformation("Attempting to add profile with email: {Email}", profile.Email);
+
+				var existing = await _accountManager.GetProfileByEmailAsync(profile.Email);
+				if (existing != null)
 				{
+					_logger.LogWarning("Profile already exists for email: {Email}", profile.Email);
 					return Conflict(new { message = "Profile already exists with this email." });
 				}
 
+				await _accountManager.AddProfileAsync(profile);
+				_logger.LogInformation("Profile created successfully for email: {Email}", profile.Email);
+
+				return CreatedAtAction(nameof(GetProfileByEmail), new { email = profile.Email }, profile);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error occurred while creating profile for email: {Email}", profile.Email);
 				return StatusCode(500, "Internal server error");
 			}
 		}
-
 
 		// Update an existing profile
 		[HttpPut("{profileId}")]
@@ -79,11 +95,13 @@ namespace LBAPI.Controllers
 				await _accountManager.UpdateProfileAsync(profile);
 				return NoContent(); // Successful update, no content returned
 			}
-			catch (System.Exception ex)
+			catch (Exception ex)
 			{
+				_logger.LogError(ex, "Error occurred while updating profile with ID: {ProfileId}", profileId);
+
 				if (ex.Message.Contains("Profile not found"))
 				{
-					return BadRequest(new { message = "Profile not found." });
+					return NotFound(new { message = "Profile not found." });
 				}
 
 				return StatusCode(500, "Internal server error");
