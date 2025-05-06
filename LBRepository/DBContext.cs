@@ -17,6 +17,8 @@ namespace LBRepository
 
 		// Define your DbSets here
 		public DbSet<Profiles> Profile { get; set; }
+		public DbSet<Booking> Bookings { get; set; }
+		public DbSet<Availability> Availability { get; set; }
 	}
 
 }

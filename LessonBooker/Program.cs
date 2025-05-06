@@ -36,6 +36,8 @@ else
 
 // --- Dependency Injection for Repositories and Managers ---
 builder.Services.AddScoped<IFirebaseAccountRepos, FirebaseAccountRepos>();
+builder.Services.AddScoped<IBookingRepos, BookingRepos>();
+builder.Services.AddScoped<IAvailabilityRepos, AvailabilityRepos>();
 builder.Services.AddScoped<FirebaseManager>();
 builder.Services.AddScoped<AccountManager>();
 builder.Services.AddScoped<IFirebaseKeyRepos, FirebaseKeyRepos>();

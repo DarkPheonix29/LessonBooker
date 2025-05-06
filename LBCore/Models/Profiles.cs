@@ -11,6 +11,8 @@ namespace LBCore.Models
 		public int ProfileId { get; set; }
 
 		[Required]
+		public string Role { get; set; }
+		[Required]
 		public string DisplayName { get; set; }
 
 		[Required]
