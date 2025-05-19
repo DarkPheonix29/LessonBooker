@@ -162,6 +162,17 @@ namespace LessonBooker.Controllers.FirebaseControllers
 				return BadRequest(new { message = ex.Message });
 			}
 		}
+
+		[Authorize]
+		[HttpGet("me")]
+		public IActionResult Me()
+		{
+			var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+			var role = User.FindFirst(ClaimTypes.Role)?.Value;
+			return Ok(new { uid, email, role });
+		}
+
 	}
 
 	public class SignUpRequest

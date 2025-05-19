@@ -38,10 +38,18 @@ namespace LessonBooker.Controllers.RegularControllers
 
 		// DELETE: api/availability/{id}
 		[HttpDelete("{id}")]
-		public async Task<IActionResult> RemoveAvailability(string id)
+		public async Task<IActionResult> RemoveAvailability(int id)
 		{
 			await _availabilityRepos.RemoveAvailabilityAsync(id);
 			return NoContent();
 		}
+
+		[HttpGet("all-availability")]
+		public async Task<IActionResult> GetAllInstructorAvailability()
+		{
+			var availabilityList = await _availabilityRepos.GetAllAvailabilityAsync();
+			return Ok(availabilityList);
+		}
+
 	}
 }

@@ -24,8 +24,11 @@ namespace LBRepository.Migrations
 
             modelBuilder.Entity("LBCore.Models.Availability", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
+                    b.Property<int>("availabilityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("availabilityId"));
 
                     b.Property<DateTime>("End")
                         .HasColumnType("timestamp with time zone");
@@ -37,15 +40,18 @@ namespace LBRepository.Migrations
                     b.Property<DateTime>("Start")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("Id");
+                    b.HasKey("availabilityId");
 
                     b.ToTable("Availability");
                 });
 
             modelBuilder.Entity("LBCore.Models.Booking", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
+                    b.Property<int>("bookingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("bookingId"));
 
                     b.Property<DateTime>("End")
                         .HasColumnType("timestamp with time zone");
@@ -61,7 +67,7 @@ namespace LBRepository.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("bookingId");
 
                     b.ToTable("Bookings");
                 });

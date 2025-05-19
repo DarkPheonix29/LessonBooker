@@ -30,7 +30,7 @@ namespace LBRepository.Repos
 			await _context.SaveChangesAsync();
 		}
 
-		public async Task RemoveAvailabilityAsync(string availabilityId)
+		public async Task RemoveAvailabilityAsync(int availabilityId)
 		{
 			var availability = await _context.Availability.FindAsync(availabilityId);
 			if (availability != null)
@@ -38,6 +38,11 @@ namespace LBRepository.Repos
 				_context.Availability.Remove(availability);
 				await _context.SaveChangesAsync();
 			}
+		}
+
+		public async Task<List<Availability>> GetAllAvailabilityAsync()
+		{
+			return await _context.Availability.ToListAsync();
 		}
 	}
 }

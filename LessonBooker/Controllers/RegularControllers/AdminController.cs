@@ -99,5 +99,21 @@ namespace LBCore.Controllers
 				return BadRequest(new { Message = ex.Message });
 			}
 		}
+		// Add this method inside your AdminController class
+
+		[HttpGet("keys")]
+		public async Task<IActionResult> GetAllKeys()
+		{
+			try
+			{
+				var keys = await _firebaseKeyRepos.GetAllKeysAsync();
+				return Ok(keys);
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new { Message = ex.Message });
+			}
+		}
+
 	}
 }

@@ -22,8 +22,4 @@
     <ProjectReference Include="..\LBCore\LBCore.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Migrations\" />
-  </ItemGroup>
-
 </Project>

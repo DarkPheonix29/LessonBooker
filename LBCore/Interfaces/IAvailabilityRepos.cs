@@ -9,6 +9,7 @@ namespace LBCore.Interfaces
 	{
 		Task<List<Availability>> GetAvailabilityByInstructorAsync(string instructorEmail);
 		Task AddAvailabilityAsync(Availability availability);
-		Task RemoveAvailabilityAsync(string availabilityId);
+		Task RemoveAvailabilityAsync(int availabilityId);
+		Task<List<Availability>> GetAllAvailabilityAsync();
 	}
 }

@@ -10,7 +10,7 @@ namespace LBCore.Models
 	public class Availability
 	{
 		[Key]
-		public string Id { get; set; } 
+		public int availabilityId { get; set; } 
 		public string InstructorEmail { get; set; }
 		public DateTime Start { get; set; }
 		public DateTime End { get; set; }

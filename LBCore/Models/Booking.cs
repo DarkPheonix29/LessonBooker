@@ -10,7 +10,7 @@ namespace LBCore.Models
 	public class Booking
 	{
 		[Key]
-		public string Id { get; set; }
+		public int bookingId { get; set; }
 		public string StudentEmail { get; set; }
 		public string InstructorEmail { get; set; }
 		public DateTime Start { get; set; }

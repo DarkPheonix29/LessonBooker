@@ -1,5 +1,6 @@
 ﻿using LBCore.Interfaces;
 using LBCore.Models;
+using LBRepository.Repos;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
@@ -58,6 +59,13 @@ namespace LessonBooker.Controllers.RegularControllers
 		{
 			await _bookingRepos.RemoveBookingAsync(id);
 			return NoContent();
+		}
+
+		[HttpGet("all-bookings")]
+		public async Task<IActionResult> GetAllBookings()
+		{
+			var bookings = await _bookingRepos.GetAllBookingsAsync();
+			return Ok(bookings);
 		}
 	}
 }
