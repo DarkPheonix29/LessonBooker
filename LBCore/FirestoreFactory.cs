@@ -16,7 +16,9 @@ namespace LBCore
 		public static FirestoreDb GetFirestoreDb()
 		{
 			if (_firestoreDb != null)
+			{
 				return _firestoreDb;
+			}
 
 			var path = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIAL_PATH");
 			var credential = GoogleCredential.FromFile(path);
@@ -29,5 +31,4 @@ namespace LBCore
 			return _firestoreDb;
 		}
 	}
-
 }

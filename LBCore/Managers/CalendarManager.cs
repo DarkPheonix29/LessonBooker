@@ -22,7 +22,9 @@ namespace LBCore.Managers
 		public async Task<List<Booking>> GetBookingsByInstructorAsync(string instructorEmail)
 		{
 			if (string.IsNullOrWhiteSpace(instructorEmail))
+			{
 				throw new ArgumentException("Instructor email must not be empty.", nameof(instructorEmail));
+			}
 
 			return await _bookingRepos.GetBookingsByInstructorAsync(instructorEmail);
 		}
@@ -30,7 +32,9 @@ namespace LBCore.Managers
 		public async Task<List<Booking>> GetBookingsByStudentAsync(string studentEmail)
 		{
 			if (string.IsNullOrWhiteSpace(studentEmail))
+			{
 				throw new ArgumentException("Student email must not be empty.", nameof(studentEmail));
+			}
 
 			return await _bookingRepos.GetBookingsByStudentAsync(studentEmail);
 		}
@@ -47,7 +51,9 @@ namespace LBCore.Managers
 		public async Task RemoveBookingAsync(string bookingId)
 		{
 			if (string.IsNullOrWhiteSpace(bookingId))
+			{
 				throw new ArgumentException("Booking ID must not be empty.", nameof(bookingId));
+			}
 
 			await _bookingRepos.RemoveBookingAsync(bookingId);
 		}
@@ -62,7 +68,9 @@ namespace LBCore.Managers
 		public async Task<List<Availability>> GetAvailabilityByInstructorAsync(string instructorEmail)
 		{
 			if (string.IsNullOrWhiteSpace(instructorEmail))
+			{
 				throw new ArgumentException("Instructor email must not be empty.", nameof(instructorEmail));
+			}
 
 			return await _availabilityRepos.GetAvailabilityByInstructorAsync(instructorEmail);
 		}
@@ -76,7 +84,9 @@ namespace LBCore.Managers
 		public async Task RemoveAvailabilityAsync(int availabilityId)
 		{
 			if (availabilityId <= 0)
+			{
 				throw new ArgumentException("Availability ID must be positive.", nameof(availabilityId));
+			}
 
 			await _availabilityRepos.RemoveAvailabilityAsync(availabilityId);
 		}
@@ -91,33 +101,55 @@ namespace LBCore.Managers
 		private void ValidateBooking(Booking booking)
 		{
 			if (booking == null)
+			{
 				throw new ArgumentNullException(nameof(booking), "Booking must not be null.");
+			}
 
 			if (string.IsNullOrWhiteSpace(booking.StudentEmail))
+			{
 				throw new ArgumentException("Student email is required.", nameof(booking.StudentEmail));
+			}
 			if (string.IsNullOrWhiteSpace(booking.InstructorEmail))
+			{
 				throw new ArgumentException("Instructor email is required.", nameof(booking.InstructorEmail));
+			}
 			if (booking.Start == default)
+			{
 				throw new ArgumentException("Booking start time is required.", nameof(booking.Start));
+			}
 			if (booking.End == default)
+			{
 				throw new ArgumentException("Booking end time is required.", nameof(booking.End));
+			}
 			if (booking.End <= booking.Start)
+			{
 				throw new ArgumentException("Booking end time must be after start time.");
+			}
 		}
 
 		private void ValidateAvailability(Availability availability)
 		{
 			if (availability == null)
+			{
 				throw new ArgumentNullException(nameof(availability), "Availability must not be null.");
+			}
 
 			if (string.IsNullOrWhiteSpace(availability.InstructorEmail))
+			{
 				throw new ArgumentException("Instructor email is required.", nameof(availability.InstructorEmail));
+			}
 			if (availability.Start == default)
+			{
 				throw new ArgumentException("Availability start time is required.", nameof(availability.Start));
+			}
 			if (availability.End == default)
+			{
 				throw new ArgumentException("Availability end time is required.", nameof(availability.End));
+			}
 			if (availability.End <= availability.Start)
+			{
 				throw new ArgumentException("Availability end time must be after start time.");
+			}
 		}
 	}
 }

@@ -8,6 +8,15 @@ using System.Threading.Tasks;
 
 namespace LBRepository.Repos
 {
+	// Custom exception for Firebase account operations
+	public class FirebaseAccountException : Exception
+	{
+		public FirebaseAccountException(string message, Exception innerException)
+			: base(message, innerException)
+		{
+		}
+	}
+
 	public class FirebaseAccountRepos : IFirebaseAccountRepos
 	{
 		private readonly FirebaseAuth _auth;
@@ -27,7 +36,7 @@ namespace LBRepository.Repos
 			}
 			catch (Exception ex)
 			{
-				throw new Exception("Error revoking tokens: " + ex.Message);
+				throw new FirebaseAccountException("Error revoking tokens.", ex);
 			}
 		}
 
@@ -50,17 +59,17 @@ namespace LBRepository.Repos
 				await AssignRoleAsync(user.Uid, role);
 
 				var userDoc = _firestoreDb.Collection("users").Document(user.Uid);
-				await userDoc.SetAsync(new
+				await userDoc.SetAsync(new Dictionary<string, object>
 				{
-					email = email,
-					role = role
+					{ "email", email },
+					{ "role", role }
 				});
 
 				return user;
 			}
 			catch (Exception ex)
 			{
-				throw new Exception("Error during sign-up: " + ex.Message);
+				throw new FirebaseAccountException("Error during sign-up.", ex);
 			}
 		}
 
@@ -73,7 +82,7 @@ namespace LBRepository.Repos
 			}
 			catch (Exception ex)
 			{
-				throw new Exception("Error during log-in: " + ex.Message);
+				throw new FirebaseAccountException("Error during log-in.", ex);
 			}
 		}
 	}

@@ -44,13 +44,13 @@ namespace LBTesting.Unit.Regular
 		}
 
 		[Fact]
-		public async Task GetProfileByEmailAsync_ProfileNotFound_ThrowsException()
+		public async Task GetProfileByEmailAsync_ProfileNotFound_ThrowsInvalidOperationException()
 		{
 			var email = "nonexistent@example.com";
 			_mockProfileRepos.Setup(repo => repo.GetProfileByEmailAsync(email))
 				.ReturnsAsync((Profiles)null);
 
-			var ex = await Assert.ThrowsAsync<Exception>(() => _accountManager.GetProfileByEmailAsync(email));
+			var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _accountManager.GetProfileByEmailAsync(email));
 			Assert.Equal("Profile not found.", ex.Message);
 		}
 
@@ -65,7 +65,7 @@ namespace LBTesting.Unit.Regular
 		}
 
 		[Fact]
-		public async Task AddProfileAsync_ProfileAlreadyExists_ThrowsException()
+		public async Task AddProfileAsync_ProfileAlreadyExists_ThrowsInvalidOperationException()
 		{
 			var profile = new Profiles
 			{
@@ -81,7 +81,7 @@ namespace LBTesting.Unit.Regular
 			_mockProfileRepos.Setup(repo => repo.GetProfileByEmailAsync(profile.Email))
 				.ReturnsAsync(profile);
 
-			var ex = await Assert.ThrowsAsync<Exception>(() => _accountManager.AddProfileAsync(profile));
+			var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _accountManager.AddProfileAsync(profile));
 			Assert.Equal("Profile already exists with this email.", ex.Message);
 		}
 
@@ -153,7 +153,7 @@ namespace LBTesting.Unit.Regular
 		}
 
 		[Fact]
-		public async Task UpdateProfileAsync_ProfileNotFound_ThrowsException()
+		public async Task UpdateProfileAsync_ProfileNotFound_ThrowsInvalidOperationException()
 		{
 			var profile = new Profiles
 			{
@@ -169,7 +169,7 @@ namespace LBTesting.Unit.Regular
 			_mockProfileRepos.Setup(repo => repo.GetProfileByEmailAsync(profile.Email))
 				.ReturnsAsync((Profiles)null);
 
-			var ex = await Assert.ThrowsAsync<Exception>(() => _accountManager.UpdateProfileAsync(profile));
+			var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _accountManager.UpdateProfileAsync(profile));
 			Assert.Equal("Profile not found.", ex.Message);
 		}
 
