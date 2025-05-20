@@ -1,9 +1,6 @@
-﻿using LessonBooker.Controllers.RegularControllers;
-using LBCore.Managers;
-using LBCore.Models;
-using LBRepository;
+﻿using LBRepository;
 using LBRepository.Repos;
-using Microsoft.AspNetCore.Mvc;
+using LBCore.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Threading.Tasks;
@@ -11,103 +8,99 @@ using Xunit;
 
 namespace LBTesting.Integration
 {
-	public class AvailabilityControllerTests : IDisposable
+	public class AvailabilityReposTests : IDisposable
 	{
-		private readonly AvailabilityController _controller;
 		private readonly ApplicationDbContext _context;
+		private readonly AvailabilityRepos _repo;
 
-		public AvailabilityControllerTests()
+		public AvailabilityReposTests()
 		{
 			var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-				.UseInMemoryDatabase(databaseName: "AvailabilityTestDb_" + Guid.NewGuid())
+				.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
 				.Options;
-
 			_context = new ApplicationDbContext(options);
-			var bookingRepos = new BookingRepos(_context);
-			var availabilityRepos = new AvailabilityRepos(_context);
-			var calendarManager = new CalendarManager(bookingRepos, availabilityRepos);
-
-			_controller = new AvailabilityController(calendarManager);
+			_repo = new AvailabilityRepos(_context);
 		}
 
 		[Fact]
-		public async Task GetAvailability_ExistingInstructor_ReturnsOk()
+		public async Task AddAvailabilityAsync_AddsAvailability()
 		{
 			var availability = new Availability
 			{
-				InstructorEmail = "instructor1@example.com",
-				Start = DateTime.UtcNow.AddDays(1).Date.AddHours(9),
-				End = DateTime.UtcNow.AddDays(1).Date.AddHours(17)
+				InstructorEmail = "instructor@example.com",
+				Start = DateTime.UtcNow.Date.AddDays(1).AddHours(9),
+				End = DateTime.UtcNow.Date.AddDays(1).AddHours(17)
 			};
-			await _context.Availability.AddAsync(availability);
-			await _context.SaveChangesAsync();
 
-			var result = await _controller.GetAvailability("instructor1@example.com");
+			await _repo.AddAvailabilityAsync(availability);
 
-			var okResult = Assert.IsType<OkObjectResult>(result);
-			var availabilities = Assert.IsAssignableFrom<System.Collections.Generic.IEnumerable<Availability>>(okResult.Value);
-			Assert.Contains(availabilities, a => a.InstructorEmail == "instructor1@example.com");
+			var found = await _context.Availability.FirstOrDefaultAsync(a => a.InstructorEmail == "instructor@example.com");
+			Assert.NotNull(found);
+			Assert.Equal(availability.Start, found.Start);
 		}
 
 		[Fact]
-		public async Task GetAvailability_NonExistentInstructor_ReturnsNotFound()
-		{
-			var result = await _controller.GetAvailability("noone@example.com");
-			var notFound = Assert.IsType<NotFoundObjectResult>(result);
-			Assert.Equal("No availability found for this instructor.", notFound.Value);
-		}
-
-		[Fact]
-		public async Task AddAvailability_Valid_ReturnsCreated()
+		public async Task GetAvailabilityByInstructorAsync_ReturnsAvailability()
 		{
 			var availability = new Availability
 			{
 				InstructorEmail = "instructor2@example.com",
-				Start = DateTime.UtcNow.AddDays(2).Date.AddHours(10),
-				End = DateTime.UtcNow.AddDays(2).Date.AddHours(12)
+				Start = DateTime.UtcNow.Date.AddDays(2).AddHours(10),
+				End = DateTime.UtcNow.Date.AddDays(2).AddHours(12)
 			};
+			_context.Availability.Add(availability);
+			await _context.SaveChangesAsync();
 
-			var result = await _controller.AddAvailability(availability);
-
-			var created = Assert.IsType<CreatedAtActionResult>(result);
-			var returnedAvailability = Assert.IsType<Availability>(created.Value);
-			Assert.Equal(availability.InstructorEmail, returnedAvailability.InstructorEmail);
+			var result = await _repo.GetAvailabilityByInstructorAsync("instructor2@example.com");
+			Assert.Single(result);
+			Assert.Equal("instructor2@example.com", result[0].InstructorEmail);
 		}
 
 		[Fact]
-		public async Task RemoveAvailability_Existing_ReturnsNoContent()
+		public async Task GetAvailabilityByInstructorAsync_NoResults_ReturnsEmptyList()
+		{
+			var result = await _repo.GetAvailabilityByInstructorAsync("noone@example.com");
+			Assert.Empty(result);
+		}
+
+		[Fact]
+		public async Task RemoveAvailabilityAsync_RemovesAvailability()
 		{
 			var availability = new Availability
 			{
 				InstructorEmail = "instructor3@example.com",
-				Start = DateTime.UtcNow.AddDays(3).Date.AddHours(8),
-				End = DateTime.UtcNow.AddDays(3).Date.AddHours(10)
+				Start = DateTime.UtcNow.Date.AddDays(3).AddHours(8),
+				End = DateTime.UtcNow.Date.AddDays(3).AddHours(10)
 			};
-			await _context.Availability.AddAsync(availability);
+			_context.Availability.Add(availability);
 			await _context.SaveChangesAsync();
 
-			var result = await _controller.RemoveAvailability(availability.availabilityId);
+			await _repo.RemoveAvailabilityAsync(availability.availabilityId);
 
-			Assert.IsType<NoContentResult>(result);
+			var found = await _context.Availability.FindAsync(availability.availabilityId);
+			Assert.Null(found);
 		}
 
 		[Fact]
-		public async Task GetAllInstructorAvailability_ReturnsAll()
+		public async Task RemoveAvailabilityAsync_NonExistent_DoesNotThrow()
 		{
-			var availability = new Availability
+			var ex = await Record.ExceptionAsync(() => _repo.RemoveAvailabilityAsync(99999));
+			Assert.Null(ex);
+		}
+
+		[Fact]
+		public async Task GetAllAvailabilityAsync_ReturnsAll()
+		{
+			_context.Availability.Add(new Availability
 			{
 				InstructorEmail = "instructor4@example.com",
-				Start = DateTime.UtcNow.AddDays(4).Date.AddHours(9),
-				End = DateTime.UtcNow.AddDays(4).Date.AddHours(11)
-			};
-			await _context.Availability.AddAsync(availability);
+				Start = DateTime.UtcNow.Date.AddDays(4).AddHours(9),
+				End = DateTime.UtcNow.Date.AddDays(4).AddHours(11)
+			});
 			await _context.SaveChangesAsync();
 
-			var result = await _controller.GetAllInstructorAvailability();
-
-			var okResult = Assert.IsType<OkObjectResult>(result);
-			var availabilities = Assert.IsAssignableFrom<System.Collections.Generic.IEnumerable<Availability>>(okResult.Value);
-			Assert.Contains(availabilities, a => a.InstructorEmail == "instructor4@example.com");
+			var availabilities = await _repo.GetAllAvailabilityAsync();
+			Assert.NotEmpty(availabilities);
 		}
 
 		public void Dispose()
