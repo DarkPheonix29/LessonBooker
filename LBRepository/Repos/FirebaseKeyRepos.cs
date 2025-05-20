@@ -98,7 +98,9 @@ namespace BLL.Firebase
 			var snapshot = await query.GetSnapshotAsync();
 
 			if (snapshot.Documents.Count == 0)
+			{
 				return false;
+			}
 
 			var document = snapshot.Documents.First();
 			await document.Reference.UpdateAsync("Used", true);

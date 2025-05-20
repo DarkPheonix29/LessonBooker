@@ -29,13 +29,19 @@ public class BookingRepos : IBookingRepos
 	public async Task<bool> AddBookingAsync(Booking booking)
 	{
 		if (!IsValidDuration(booking))
+		{
 			return false;
+		}
 
 		if (!await FitsInAvailabilityAsync(booking))
+		{
 			return false;
+		}
 
 		if (await HasOverlappingBookingsAsync(booking))
+		{
 			return false;
+		}
 
 		await _context.Bookings.AddAsync(booking);
 		await _context.SaveChangesAsync();
