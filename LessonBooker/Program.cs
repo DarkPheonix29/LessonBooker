@@ -40,6 +40,7 @@ builder.Services.AddScoped<IBookingRepos, BookingRepos>();
 builder.Services.AddScoped<IAvailabilityRepos, AvailabilityRepos>();
 builder.Services.AddScoped<FirebaseManager>();
 builder.Services.AddScoped<AccountManager>();
+builder.Services.AddScoped<CalendarManager>();
 builder.Services.AddScoped<IFirebaseKeyRepos, FirebaseKeyRepos>();
 builder.Services.AddScoped<IProfileRepos, ProfileRepos>();
 

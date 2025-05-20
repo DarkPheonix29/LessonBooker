@@ -16,7 +16,7 @@ namespace LBTesting.Unit.Regular
 		public AccountManagerTests()
 		{
 			_mockProfileRepos = new Mock<IProfileRepos>();
-			_accountManager = new AccountManager(_mockProfileRepos.Object); // Updated with new repos
+			_accountManager = new AccountManager(_mockProfileRepos.Object);
 		}
 
 		[Fact]
@@ -48,10 +48,20 @@ namespace LBTesting.Unit.Regular
 		{
 			var email = "nonexistent@example.com";
 			_mockProfileRepos.Setup(repo => repo.GetProfileByEmailAsync(email))
-				.ReturnsAsync((Profiles)null); // Simulate profile not found
+				.ReturnsAsync((Profiles)null);
 
-			var exception = await Assert.ThrowsAsync<Exception>(() => _accountManager.GetProfileByEmailAsync(email));
-			Assert.Equal("Profile not found.", exception.Message); // Check exception message
+			var ex = await Assert.ThrowsAsync<Exception>(() => _accountManager.GetProfileByEmailAsync(email));
+			Assert.Equal("Profile not found.", ex.Message);
+		}
+
+		[Theory]
+		[InlineData(null)]
+		[InlineData("")]
+		[InlineData("   ")]
+		public async Task GetProfileByEmailAsync_NullOrEmptyEmail_ThrowsArgumentException(string email)
+		{
+			var ex = await Assert.ThrowsAsync<ArgumentException>(() => _accountManager.GetProfileByEmailAsync(email));
+			Assert.Contains("Email", ex.Message, StringComparison.OrdinalIgnoreCase);
 		}
 
 		[Fact]
@@ -69,10 +79,10 @@ namespace LBTesting.Unit.Regular
 			};
 
 			_mockProfileRepos.Setup(repo => repo.GetProfileByEmailAsync(profile.Email))
-				.ReturnsAsync(profile); // Simulate that profile already exists
+				.ReturnsAsync(profile);
 
-			var exception = await Assert.ThrowsAsync<Exception>(() => _accountManager.AddProfileAsync(profile));
-			Assert.Equal("Profile already exists with this email.", exception.Message); // Check exception message
+			var ex = await Assert.ThrowsAsync<Exception>(() => _accountManager.AddProfileAsync(profile));
+			Assert.Equal("Profile already exists with this email.", ex.Message);
 		}
 
 		[Fact]
@@ -101,6 +111,48 @@ namespace LBTesting.Unit.Regular
 		}
 
 		[Fact]
+		public async Task AddProfileAsync_NullProfile_ThrowsArgumentNullException()
+		{
+			await Assert.ThrowsAsync<ArgumentNullException>(() => _accountManager.AddProfileAsync(null));
+		}
+
+		[Theory]
+		[InlineData(null)]
+		[InlineData("")]
+		[InlineData("   ")]
+		public async Task AddProfileAsync_MissingEmail_ThrowsArgumentException(string email)
+		{
+			var profile = new Profiles
+			{
+				ProfileId = 1,
+				Email = email,
+				DisplayName = "Test User",
+				PhoneNumber = "1234567890",
+				Address = "123 Test Street",
+				PickupAddress = "456 Pickup Lane",
+				DateOfBirth = new DateTime(1990, 1, 1)
+			};
+			var ex = await Assert.ThrowsAsync<ArgumentException>(() => _accountManager.AddProfileAsync(profile));
+			Assert.Contains("Email", ex.Message, StringComparison.OrdinalIgnoreCase);
+		}
+
+		[Fact]
+		public async Task AddProfileAsync_MissingRequiredFields_ThrowsArgumentException()
+		{
+			var profile = new Profiles
+			{
+				ProfileId = 1,
+				Email = "test@example.com",
+				DisplayName = null,
+				PhoneNumber = "",
+				Address = "   ",
+				PickupAddress = null,
+				DateOfBirth = default
+			};
+			await Assert.ThrowsAsync<ArgumentException>(() => _accountManager.AddProfileAsync(profile));
+		}
+
+		[Fact]
 		public async Task UpdateProfileAsync_ProfileNotFound_ThrowsException()
 		{
 			var profile = new Profiles
@@ -115,10 +167,10 @@ namespace LBTesting.Unit.Regular
 			};
 
 			_mockProfileRepos.Setup(repo => repo.GetProfileByEmailAsync(profile.Email))
-				.ReturnsAsync((Profiles)null); // Simulate profile not found
+				.ReturnsAsync((Profiles)null);
 
-			var exception = await Assert.ThrowsAsync<Exception>(() => _accountManager.UpdateProfileAsync(profile));
-			Assert.Equal("Profile not found.", exception.Message); // Check exception message
+			var ex = await Assert.ThrowsAsync<Exception>(() => _accountManager.UpdateProfileAsync(profile));
+			Assert.Equal("Profile not found.", ex.Message);
 		}
 
 		[Fact]
@@ -144,6 +196,28 @@ namespace LBTesting.Unit.Regular
 			await _accountManager.UpdateProfileAsync(profile);
 
 			_mockProfileRepos.Verify(repo => repo.UpdateProfileAsync(profile), Times.Once);
+		}
+
+		[Fact]
+		public async Task UpdateProfileAsync_NullProfile_ThrowsArgumentNullException()
+		{
+			await Assert.ThrowsAsync<ArgumentNullException>(() => _accountManager.UpdateProfileAsync(null));
+		}
+
+		[Fact]
+		public async Task UpdateProfileAsync_MissingRequiredFields_ThrowsArgumentException()
+		{
+			var profile = new Profiles
+			{
+				ProfileId = 1,
+				Email = "test@example.com",
+				DisplayName = "",
+				PhoneNumber = null,
+				Address = null,
+				PickupAddress = "",
+				DateOfBirth = default
+			};
+			await Assert.ThrowsAsync<ArgumentException>(() => _accountManager.UpdateProfileAsync(profile));
 		}
 	}
 }

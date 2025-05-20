@@ -19,26 +19,25 @@ namespace LBAPI.Controllers
 			_logger = logger;
 		}
 
-		// Get profile by email
 		[HttpGet("{email}")]
 		public async Task<IActionResult> GetProfileByEmail(string email)
 		{
 			try
 			{
 				var profile = await _accountManager.GetProfileByEmailAsync(email);
-				if (profile == null)
-				{
-					return NotFound(new { message = "Profile not found." });
-				}
-
 				return Ok(profile);
 			}
 			catch (Exception ex)
 			{
+				if (ex.Message.Contains("Profile not found"))
+				{
+					return NotFound(new { message = "Profile not found." });
+				}
 				_logger.LogError(ex, "Error retrieving profile for email: {Email}", email);
 				return StatusCode(500, "Internal server error");
 			}
 		}
+
 
 		// Get all profiles
 		[HttpGet]
@@ -48,7 +47,6 @@ namespace LBAPI.Controllers
 			return Ok(profiles);
 		}
 
-		// Add a new profile
 		[HttpPost]
 		public async Task<IActionResult> AddProfile([FromBody] Profiles profile)
 		{
@@ -62,13 +60,6 @@ namespace LBAPI.Controllers
 			{
 				_logger.LogInformation("Attempting to add profile with email: {Email}", profile.Email);
 
-				var existing = await _accountManager.GetProfileByEmailAsync(profile.Email);
-				if (existing != null)
-				{
-					_logger.LogWarning("Profile already exists for email: {Email}", profile.Email);
-					return Conflict(new { message = "Profile already exists with this email." });
-				}
-
 				await _accountManager.AddProfileAsync(profile);
 				_logger.LogInformation("Profile created successfully for email: {Email}", profile.Email);
 
@@ -76,10 +67,15 @@ namespace LBAPI.Controllers
 			}
 			catch (Exception ex)
 			{
+				if (ex.Message.Contains("Profile already exists"))
+				{
+					return Conflict(new { message = "Profile already exists with this email." });
+				}
 				_logger.LogError(ex, "Error occurred while creating profile for email: {Email}", profile.Email);
 				return StatusCode(500, "Internal server error");
 			}
 		}
+
 
 		// Update an existing profile
 		[HttpPut("{profileId}")]

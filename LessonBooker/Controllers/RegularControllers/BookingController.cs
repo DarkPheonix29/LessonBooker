@@ -1,6 +1,5 @@
-﻿using LBCore.Interfaces;
+﻿using LBCore.Managers;
 using LBCore.Models;
-using LBRepository.Repos;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
@@ -10,18 +9,18 @@ namespace LessonBooker.Controllers.RegularControllers
 	[ApiController]
 	public class BookingController : ControllerBase
 	{
-		private readonly IBookingRepos _bookingRepos;
+		private readonly CalendarManager _calendarManager;
 
-		public BookingController(IBookingRepos bookingRepos)
+		public BookingController(CalendarManager calendarManager)
 		{
-			_bookingRepos = bookingRepos;
+			_calendarManager = calendarManager;
 		}
 
 		// GET: api/bookings/instructor/{instructorEmail}
 		[HttpGet("instructor/{instructorEmail}")]
 		public async Task<IActionResult> GetBookingsByInstructor(string instructorEmail)
 		{
-			var bookings = await _bookingRepos.GetBookingsByInstructorAsync(instructorEmail);
+			var bookings = await _calendarManager.GetBookingsByInstructorAsync(instructorEmail);
 			if (bookings == null || bookings.Count == 0)
 			{
 				return NotFound("No bookings found for this instructor.");
@@ -33,7 +32,7 @@ namespace LessonBooker.Controllers.RegularControllers
 		[HttpGet("student/{studentEmail}")]
 		public async Task<IActionResult> GetBookingsByStudent(string studentEmail)
 		{
-			var bookings = await _bookingRepos.GetBookingsByStudentAsync(studentEmail);
+			var bookings = await _calendarManager.GetBookingsByStudentAsync(studentEmail);
 			if (bookings == null || bookings.Count == 0)
 			{
 				return NotFound("No bookings found for this student.");
@@ -45,7 +44,7 @@ namespace LessonBooker.Controllers.RegularControllers
 		[HttpPost]
 		public async Task<IActionResult> AddBooking([FromBody] Booking booking)
 		{
-			var success = await _bookingRepos.AddBookingAsync(booking);
+			var success = await _calendarManager.AddBookingAsync(booking);
 			if (!success)
 			{
 				return BadRequest("Booking conflict with another instructor or time slot.");
@@ -57,14 +56,14 @@ namespace LessonBooker.Controllers.RegularControllers
 		[HttpDelete("{id}")]
 		public async Task<IActionResult> RemoveBooking(string id)
 		{
-			await _bookingRepos.RemoveBookingAsync(id);
+			await _calendarManager.RemoveBookingAsync(id);
 			return NoContent();
 		}
 
 		[HttpGet("all-bookings")]
 		public async Task<IActionResult> GetAllBookings()
 		{
-			var bookings = await _bookingRepos.GetAllBookingsAsync();
+			var bookings = await _calendarManager.GetAllBookingsAsync();
 			return Ok(bookings);
 		}
 	}

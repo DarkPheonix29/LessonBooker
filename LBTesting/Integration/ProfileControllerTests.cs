@@ -8,6 +8,7 @@ using Xunit;
 using System.Threading.Tasks;
 using LBRepository.Repos;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace LBTesting.Integration
 {
@@ -24,8 +25,12 @@ namespace LBTesting.Integration
 
 			_context = new ApplicationDbContext(options);
 			var profileRepos = new ProfileRepos(_context);
-			var accountManager = new AccountManager(profileRepos); // Updated with new repos
-			_controller = new ProfileController(accountManager);
+			var accountManager = new AccountManager(profileRepos);
+
+			// Create a mock logger for the ProfileController
+			var logger = new LoggerFactory().CreateLogger<ProfileController>();
+
+			_controller = new ProfileController(accountManager, logger);
 		}
 
 		[Fact]
@@ -58,7 +63,7 @@ namespace LBTesting.Integration
 		{
 			var result = await _controller.GetProfileByEmail("nonexistent@example.com");
 
-			Assert.IsType<NotFoundResult>(result);
+			Assert.IsType<NotFoundObjectResult>(result);
 		}
 
 		[Fact]
@@ -107,7 +112,7 @@ namespace LBTesting.Integration
 		}
 
 		[Fact]
-		public async Task UpdateProfile_ProfileNotFound_ReturnsBadRequest()
+		public async Task UpdateProfile_ProfileNotFound_ReturnsNotFound()
 		{
 			var profile = new Profiles
 			{
@@ -122,7 +127,7 @@ namespace LBTesting.Integration
 
 			var result = await _controller.UpdateProfile(99, profile);
 
-			Assert.IsType<BadRequestObjectResult>(result);
+			Assert.IsType<NotFoundObjectResult>(result);
 		}
 
 		// Dispose of the context after tests

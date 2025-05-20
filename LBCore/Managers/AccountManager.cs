@@ -1,5 +1,6 @@
 ﻿using LBCore.Interfaces;
 using LBCore.Models;
+using System;
 
 namespace LBCore.Managers
 {
@@ -15,8 +16,15 @@ namespace LBCore.Managers
 		// Get profile by email
 		public async Task<Profiles> GetProfileByEmailAsync(string email)
 		{
+			if (string.IsNullOrWhiteSpace(email))
+				throw new ArgumentException("Email must not be empty.", nameof(email));
+
 			var profile = await _profileRepos.GetProfileByEmailAsync(email);
-			return profile; // Return null if profile is not found
+			if (profile == null)
+			{
+				throw new Exception("Profile not found.");
+			}
+			return profile;
 		}
 
 		// Get all profiles
@@ -28,6 +36,8 @@ namespace LBCore.Managers
 		// Add a new profile
 		public async Task AddProfileAsync(Profiles profile)
 		{
+			ValidateProfile(profile);
+
 			var existingProfile = await _profileRepos.GetProfileByEmailAsync(profile.Email);
 			if (existingProfile != null)
 			{
@@ -39,12 +49,33 @@ namespace LBCore.Managers
 		// Update an existing profile
 		public async Task UpdateProfileAsync(Profiles profile)
 		{
+			ValidateProfile(profile);
+
 			var existingProfile = await _profileRepos.GetProfileByEmailAsync(profile.Email);
 			if (existingProfile == null)
 			{
 				throw new Exception("Profile not found.");
 			}
 			await _profileRepos.UpdateProfileAsync(profile);
+		}
+
+		private void ValidateProfile(Profiles profile)
+		{
+			if (profile == null)
+				throw new ArgumentNullException(nameof(profile), "Profile must not be null.");
+
+			if (string.IsNullOrWhiteSpace(profile.Email))
+				throw new ArgumentException("Email is required.", nameof(profile.Email));
+			if (string.IsNullOrWhiteSpace(profile.DisplayName))
+				throw new ArgumentException("DisplayName is required.", nameof(profile.DisplayName));
+			if (string.IsNullOrWhiteSpace(profile.PhoneNumber))
+				throw new ArgumentException("PhoneNumber is required.", nameof(profile.PhoneNumber));
+			if (string.IsNullOrWhiteSpace(profile.Address))
+				throw new ArgumentException("Address is required.", nameof(profile.Address));
+			if (string.IsNullOrWhiteSpace(profile.PickupAddress))
+				throw new ArgumentException("PickupAddress is required.", nameof(profile.PickupAddress));
+			if (profile.DateOfBirth == default)
+				throw new ArgumentException("DateOfBirth is required.", nameof(profile.DateOfBirth));
 		}
 	}
 }
