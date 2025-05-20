@@ -73,7 +73,7 @@ public class BookingRepos : IBookingRepos
 						   booking.Start < b.End);
 	}
 
-	public async Task RemoveBookingAsync(string bookingId)
+	public async Task RemoveBookingAsync(int bookingId)
 	{
 		var booking = await _context.Bookings.FindAsync(bookingId);
 		if (booking != null)

@@ -119,7 +119,7 @@ namespace LBTesting.Unit.Regular
 		[Fact]
 		public async Task RemoveBookingAsync_ValidId_CallsRepo()
 		{
-			var bookingId = "123";
+			int bookingId = 123;
 			_mockBookingRepos.Setup(r => r.RemoveBookingAsync(bookingId)).Returns(Task.CompletedTask);
 
 			await _calendarManager.RemoveBookingAsync(bookingId);
@@ -128,10 +128,9 @@ namespace LBTesting.Unit.Regular
 		}
 
 		[Theory]
-		[InlineData(null)]
-		[InlineData("")]
-		[InlineData("   ")]
-		public async Task RemoveBookingAsync_InvalidId_ThrowsArgumentException(string bookingId)
+		[InlineData(0)]
+		[InlineData(-1)]
+		public async Task RemoveBookingAsync_InvalidId_ThrowsArgumentException(int bookingId)
 		{
 			await Assert.ThrowsAsync<ArgumentException>(() => _calendarManager.RemoveBookingAsync(bookingId));
 		}

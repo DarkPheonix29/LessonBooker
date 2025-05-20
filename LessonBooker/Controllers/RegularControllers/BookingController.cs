@@ -54,7 +54,7 @@ namespace LessonBooker.Controllers.RegularControllers
 
 		// DELETE: api/bookings/{id}
 		[HttpDelete("{id}")]
-		public async Task<IActionResult> RemoveBooking(string id)
+		public async Task<IActionResult> RemoveBooking(int id)
 		{
 			await _calendarManager.RemoveBookingAsync(id);
 			return NoContent();

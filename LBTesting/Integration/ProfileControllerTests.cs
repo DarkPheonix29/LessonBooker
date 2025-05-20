@@ -20,16 +20,13 @@ namespace LBTesting.Integration
 		public ProfileControllerTests()
 		{
 			var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-				.UseInMemoryDatabase(databaseName: "TestDatabase_" + Guid.NewGuid()) // Unique database name per test run
+				.UseInMemoryDatabase(databaseName: "TestDatabase_" + Guid.NewGuid())
 				.Options;
 
 			_context = new ApplicationDbContext(options);
 			var profileRepos = new ProfileRepos(_context);
 			var accountManager = new AccountManager(profileRepos);
-
-			// Create a mock logger for the ProfileController
 			var logger = new LoggerFactory().CreateLogger<ProfileController>();
-
 			_controller = new ProfileController(accountManager, logger);
 		}
 
@@ -62,8 +59,43 @@ namespace LBTesting.Integration
 		public async Task GetProfileByEmail_NonExistentProfile_ReturnsNotFound()
 		{
 			var result = await _controller.GetProfileByEmail("nonexistent@example.com");
-
 			Assert.IsType<NotFoundObjectResult>(result);
+		}
+
+		[Fact]
+		public async Task GetAllProfiles_ReturnsAllProfiles()
+		{
+			var profile1 = new Profiles
+			{
+				ProfileId = 1,
+				Email = "user1@example.com",
+				DisplayName = "User One",
+				PhoneNumber = "1111111111",
+				Address = "Address 1",
+				PickupAddress = "Pickup 1",
+				DateOfBirth = new DateTime(1991, 1, 1)
+			};
+			var profile2 = new Profiles
+			{
+				ProfileId = 2,
+				Email = "user2@example.com",
+				DisplayName = "User Two",
+				PhoneNumber = "2222222222",
+				Address = "Address 2",
+				PickupAddress = "Pickup 2",
+				DateOfBirth = new DateTime(1992, 2, 2)
+			};
+
+			await _context.AddAsync(profile1);
+			await _context.AddAsync(profile2);
+			await _context.SaveChangesAsync();
+
+			var result = await _controller.GetAllProfiles();
+
+			var okResult = Assert.IsType<OkObjectResult>(result);
+			var profiles = Assert.IsAssignableFrom<System.Collections.Generic.IEnumerable<Profiles>>(okResult.Value);
+			Assert.Contains(profiles, p => p.Email == profile1.Email);
+			Assert.Contains(profiles, p => p.Email == profile2.Email);
 		}
 
 		[Fact]
@@ -71,7 +103,7 @@ namespace LBTesting.Integration
 		{
 			var profile = new Profiles
 			{
-				ProfileId = 2,
+				ProfileId = 3,
 				Email = "newuser@example.com",
 				DisplayName = "New User",
 				PhoneNumber = "0987654321",
@@ -88,11 +120,52 @@ namespace LBTesting.Integration
 		}
 
 		[Fact]
+		public async Task AddProfile_NullProfile_ReturnsBadRequest()
+		{
+			var result = await _controller.AddProfile(null);
+			var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+			Assert.Equal("Profile data is required.", badRequest.Value);
+		}
+
+		[Fact]
+		public async Task AddProfile_DuplicateEmail_ReturnsConflict()
+		{
+			var profile = new Profiles
+			{
+				ProfileId = 4,
+				Email = "duplicate@example.com",
+				DisplayName = "Dup User",
+				PhoneNumber = "3333333333",
+				Address = "Dup Address",
+				PickupAddress = "Dup Pickup",
+				DateOfBirth = new DateTime(1993, 3, 3)
+			};
+
+			await _controller.AddProfile(profile);
+
+			// Try to add again with the same email
+			var duplicateProfile = new Profiles
+			{
+				ProfileId = 5,
+				Email = "duplicate@example.com",
+				DisplayName = "Dup User 2",
+				PhoneNumber = "4444444444",
+				Address = "Dup Address 2",
+				PickupAddress = "Dup Pickup 2",
+				DateOfBirth = new DateTime(1994, 4, 4)
+			};
+
+			var result = await _controller.AddProfile(duplicateProfile);
+
+			Assert.IsType<ConflictObjectResult>(result);
+		}
+
+		[Fact]
 		public async Task UpdateProfile_ExistingProfile_ReturnsNoContent()
 		{
 			var profile = new Profiles
 			{
-				ProfileId = 3,
+				ProfileId = 6,
 				Email = "updateuser@example.com",
 				DisplayName = "Update User",
 				PhoneNumber = "1231231234",
@@ -109,6 +182,26 @@ namespace LBTesting.Integration
 			var result = await _controller.UpdateProfile(profile.ProfileId, profile);
 
 			Assert.IsType<NoContentResult>(result);
+		}
+
+		[Fact]
+		public async Task UpdateProfile_ProfileIdMismatch_ReturnsBadRequest()
+		{
+			var profile = new Profiles
+			{
+				ProfileId = 7,
+				Email = "mismatch@example.com",
+				DisplayName = "Mismatch User",
+				PhoneNumber = "5555555555",
+				Address = "Mismatch Address",
+				PickupAddress = "Mismatch Pickup",
+				DateOfBirth = new DateTime(1996, 6, 6)
+			};
+
+			var result = await _controller.UpdateProfile(999, profile);
+
+			var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+			Assert.Equal("Profile ID mismatch.", badRequest.Value);
 		}
 
 		[Fact]
@@ -130,7 +223,6 @@ namespace LBTesting.Integration
 			Assert.IsType<NotFoundObjectResult>(result);
 		}
 
-		// Dispose of the context after tests
 		public void Dispose()
 		{
 			_context.Dispose();

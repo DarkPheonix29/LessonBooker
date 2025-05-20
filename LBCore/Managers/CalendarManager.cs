@@ -48,11 +48,11 @@ namespace LBCore.Managers
 			return await _bookingRepos.AddBookingAsync(booking);
 		}
 
-		public async Task RemoveBookingAsync(string bookingId)
+		public async Task RemoveBookingAsync(int bookingId)
 		{
-			if (string.IsNullOrWhiteSpace(bookingId))
+			if (bookingId <= 0)
 			{
-				throw new ArgumentException("Booking ID must not be empty.", nameof(bookingId));
+				throw new ArgumentException("Booking ID must be positive.", nameof(bookingId));
 			}
 
 			await _bookingRepos.RemoveBookingAsync(bookingId);

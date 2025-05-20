@@ -10,7 +10,7 @@ namespace LBCore.Interfaces
 		Task<List<Booking>> GetBookingsByInstructorAsync(string instructorEmail);
 		Task<List<Booking>> GetBookingsByStudentAsync(string studentEmail);
 		Task<bool> AddBookingAsync(Booking booking);
-		Task RemoveBookingAsync(string bookingId);
+		Task RemoveBookingAsync(int bookingId);
 		Task<List<Booking>> GetAllBookingsAsync();
 	}
 }
