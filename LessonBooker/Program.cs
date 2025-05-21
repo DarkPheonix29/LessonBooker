@@ -20,7 +20,7 @@ FirebaseConfig.InitializeFirebase();
 builder.Services.AddScoped<FirebaseAuth>(_ => FirebaseAuth.DefaultInstance);
 
 // --- Add DbContext Configuration ---
-var connectionString = builder.Configuration.GetConnectionString("LocalPostgres");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var env = builder.Environment.EnvironmentName;
 
 if (env == "Development")
