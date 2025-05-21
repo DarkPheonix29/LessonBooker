@@ -1,0 +1,40 @@
+name: CD Backend
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: lessonbooker-8664a
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Build Docker image
+        run: |
+          docker build -f LessonBooker/Dockerfile -t gcr.io/lessonbooker-8664a/lessonbooker:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push gcr.io/lessonbooker-8664a/lessonbooker:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy lessonbooker \
+            --image gcr.io/lessonbooker-8664a/lessonbooker:latest \
+            --region europe-west4 \
+            --platform managed \
+            --add-cloudsql-instances lessonbooker-8664a:europe-west4:lessonbooker-db \
+            --set-env-vars ASPNETCORE_ENVIRONMENT=Production \
+            --set-env-vars ConnectionStrings__DefaultConnection="Host=...;Port=5432;Database=LBDB;Username=postgres;Password=\$DB_PASSWORD" \
+            --set-secrets DB_PASSWORD=projects/412093205377/secrets/db-password \
+            --memory 512Mi \
+            --allow-unauthenticated
