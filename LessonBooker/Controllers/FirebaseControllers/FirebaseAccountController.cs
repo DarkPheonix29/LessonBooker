@@ -97,6 +97,7 @@ namespace LessonBooker.Controllers.FirebaseControllers
 				return BadRequest(new { message = ex.Message });
 			}
 		}
+
 		[HttpPost("login")]
 		public async Task<IActionResult> Login([FromBody] TokenRequest request)
 		{
@@ -163,7 +164,6 @@ namespace LessonBooker.Controllers.FirebaseControllers
 			}
 		}
 
-		[Authorize]
 		[HttpGet("me")]
 		public IActionResult Me()
 		{
