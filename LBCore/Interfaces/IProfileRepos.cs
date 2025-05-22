@@ -9,6 +9,7 @@ namespace LBCore.Interfaces
 		Task<Profiles> GetProfileByEmailAsync(string email);
 		Task<IEnumerable<Profiles>> GetAllProfilesAsync();
 		Task AddProfileAsync(Profiles profile);
+
 		Task UpdateProfileAsync(Profiles profile);
 	}
 }
