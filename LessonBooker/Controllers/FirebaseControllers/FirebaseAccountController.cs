@@ -1,7 +1,6 @@
 ﻿using FirebaseAdmin.Auth;
 using LBCore.Managers;
 using LBCore.Interfaces;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -18,19 +17,18 @@ namespace LessonBooker.Controllers.FirebaseControllers
 	public class AccountController : ControllerBase
 	{
 		private readonly FirebaseManager _firebaseManager;
-		private readonly IFirebaseKeyRepos _firebaseKeyRepos;  // Inject the FirebaseKeyRepos service
+		private readonly IFirebaseKeyRepos _firebaseKeyRepos;
 		private readonly FirestoreDb _firestoreDb;
 
 		public AccountController(FirebaseManager firebaseManager, IFirebaseKeyRepos firebaseKeyRepos)
 		{
 			_firebaseManager = firebaseManager;
-			_firebaseKeyRepos = firebaseKeyRepos;  // Initialize the service
+			_firebaseKeyRepos = firebaseKeyRepos;
 			_firestoreDb = FirestoreFactory.GetFirestoreDb();
-
 		}
 
 		/// <summary>
-		/// Verifies the provided Firebase ID token and signs in the user.
+		/// Verifies the provided Firebase ID token.
 		/// </summary>
 		[HttpPost("verify")]
 		public async Task<IActionResult> VerifyToken([FromBody] TokenRequest request)
@@ -49,23 +47,7 @@ namespace LessonBooker.Controllers.FirebaseControllers
 						   ? userRecord.CustomClaims["role"].ToString()
 						   : "student";
 
-				var claims = new List<Claim>
-				{
-					new Claim(ClaimTypes.NameIdentifier, uid),
-					new Claim(ClaimTypes.Email, userRecord.Email),
-					new Claim(ClaimTypes.Role, role)
-				};
-
-				var identity = new ClaimsIdentity(claims, "Firebase");
-				var principal = new ClaimsPrincipal(identity);
-
-				await HttpContext.SignInAsync("Firebase", principal, new AuthenticationProperties
-				{
-					IsPersistent = true,
-					ExpiresUtc = DateTime.UtcNow.AddDays(30)
-				});
-
-				return Ok(new { message = "Token verified successfully", uid });
+				return Ok(new { message = "Token verified successfully", uid, role });
 			}
 			catch (Exception ex)
 			{
@@ -81,14 +63,12 @@ namespace LessonBooker.Controllers.FirebaseControllers
 		{
 			try
 			{
-				// Check if the registration key is valid
 				bool isKeyValid = await _firebaseKeyRepos.UseRegistrationKeyAsync(request.RegistrationKey);
 				if (!isKeyValid)
 				{
 					return BadRequest(new { message = "Invalid or used registration key." });
 				}
 
-				// For now, we only assign the "student" role.
 				var user = await _firebaseManager.SignUpAsync(request.Email, request.Password, "student");
 				return Ok(new { message = "User signed up successfully.", uid = user.Uid });
 			}
@@ -103,10 +83,8 @@ namespace LessonBooker.Controllers.FirebaseControllers
 		{
 			try
 			{
-				// Step 1: Verify the ID token
 				var uid = await _firebaseManager.LoginAsync(request.IdToken);
 
-				// Step 2: Get the user's role from Firestore
 				var userDoc = _firestoreDb.Collection("users").Document(uid);
 				var userSnapshot = await userDoc.GetSnapshotAsync();
 
@@ -116,27 +94,12 @@ namespace LessonBooker.Controllers.FirebaseControllers
 				}
 
 				var userData = userSnapshot.ToDictionary();
-				var role = userData.ContainsKey("role") ? userData["role"].ToString() : "student"; // Default to "student" if role is not found
+				var role = userData.ContainsKey("role") ? userData["role"].ToString() : "student";
 
-				// Step 3: Create claims based on the user data
 				var userRecord = await FirebaseAuth.DefaultInstance.GetUserAsync(uid);
-				var claims = new List<Claim>
-		{
-			new Claim(ClaimTypes.NameIdentifier, uid),
-			new Claim(ClaimTypes.Email, userRecord.Email),
-			new Claim(ClaimTypes.Role, role)
-		};
 
-				var identity = new ClaimsIdentity(claims, "Firebase");
-				var principal = new ClaimsPrincipal(identity);
-
-				await HttpContext.SignInAsync("Firebase", principal, new AuthenticationProperties
-				{
-					IsPersistent = true,
-					ExpiresUtc = DateTime.UtcNow.AddDays(30)
-				});
-
-				return Ok(new { message = "Logged in successfully.", role }); // Return the role to the frontend
+				// No cookie logic here; frontend should use the ID token as a Bearer token
+				return Ok(new { message = "Logged in successfully.", role, uid, email = userRecord.Email });
 			}
 			catch (Exception ex)
 			{
@@ -150,12 +113,12 @@ namespace LessonBooker.Controllers.FirebaseControllers
 		{
 			try
 			{
-				var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+				var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("user_id")?.Value;
 				if (!string.IsNullOrEmpty(userId))
 				{
 					await _firebaseManager.LogoutAsync(userId);
 				}
-				await HttpContext.SignOutAsync();
+				// No cookie to clear
 				return Ok(new { message = "Logged out successfully." });
 			}
 			catch (Exception ex)
@@ -168,19 +131,18 @@ namespace LessonBooker.Controllers.FirebaseControllers
 		[HttpGet("me")]
 		public IActionResult Me()
 		{
-			var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("user_id")?.Value;
 			var email = User.FindFirst(ClaimTypes.Email)?.Value;
 			var role = User.FindFirst(ClaimTypes.Role)?.Value;
 			return Ok(new { uid, email, role });
 		}
-
 	}
 
 	public class SignUpRequest
 	{
 		public string Email { get; set; }
 		public string Password { get; set; }
-		public string RegistrationKey { get; set; }  // Added field for registration key
+		public string RegistrationKey { get; set; }
 	}
 
 	public class TokenRequest

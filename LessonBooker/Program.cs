@@ -9,6 +9,8 @@ using Microsoft.OpenApi.Models;
 using LBRepository;
 using Microsoft.Extensions.Logging;
 using BLL.Firebase;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,23 +40,22 @@ builder.Services.AddScoped<IFirebaseKeyRepos, FirebaseKeyRepos>();
 builder.Services.AddScoped<IProfileRepos, ProfileRepos>();
 
 // --- Authentication and Authorization ---
-builder.Services.AddAuthentication("Firebase")
-	.AddCookie("Firebase", options =>
+;
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+	.AddJwtBearer(options =>
 	{
-		options.Cookie.Name = "LessonBookerAuth";
-		options.Cookie.SameSite = SameSiteMode.None;
-		options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-		options.Events.OnRedirectToLogin = context =>
+		options.Authority = "https://securetoken.google.com/YOUR_FIREBASE_PROJECT_ID";
+		options.TokenValidationParameters = new TokenValidationParameters
 		{
-			context.Response.StatusCode = 401;
-			return Task.CompletedTask;
-		};
-		options.Events.OnRedirectToAccessDenied = context =>
-		{
-			context.Response.StatusCode = 403;
-			return Task.CompletedTask;
+			ValidateIssuer = true,
+			ValidIssuer = "https://securetoken.google.com/YOUR_FIREBASE_PROJECT_ID",
+			ValidateAudience = true,
+			ValidAudience = "YOUR_FIREBASE_PROJECT_ID",
+			ValidateLifetime = true
 		};
 	});
+
 
 
 
