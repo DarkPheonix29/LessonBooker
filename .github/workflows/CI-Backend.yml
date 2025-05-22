@@ -31,7 +31,7 @@ jobs:
       run: dotnet build --no-restore LessonBooker.sln
 
     - name: Run Tests
-      run: dotnet test --no-build --verbosity normal /p:CollectCoverage=true /p:CoverletOutputFormat=lcov /p:CoverletOutput="${GITHUB_WORKSPACE}/lcov.info"
+      run: dotnet test LessonBooker.sln --no-build --verbosity normal /p:CollectCoverage=true /p:CoverletOutputFormat=lcov /p:CoverletOutput="${GITHUB_WORKSPACE}/lcov.info"
 
     - name: Run Codacy Analysis CLI
       uses: codacy/codacy-analysis-cli-action@97bf5df3c09e75f5bcd72695998f96ebd701846e
