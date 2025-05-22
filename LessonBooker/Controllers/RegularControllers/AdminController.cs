@@ -5,11 +5,14 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using LBCore.Interfaces;
 using LBCore.Models;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace LBCore.Controllers
 {
 	[ApiController]
 	[Route("api/admin")]
+	[Authorize] // Require authentication for all actions
 	public class AdminController : ControllerBase
 	{
 		private readonly IFirebaseKeyRepos _firebaseKeyRepos;
@@ -26,10 +29,23 @@ namespace LBCore.Controllers
 			_profileRepos = profileRepos;
 		}
 
-		// 1. Create a new registration key
+		// Helper: Check if current user is admin
+		private async Task<bool> IsCurrentUserAdminAsync()
+		{
+			var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(uid))
+				return false;
+
+			var role = await _firebaseAccountRepos.GetUserRoleAsync(uid);
+			return role == "admin";
+		}
+
 		[HttpPost("generate-key")]
 		public async Task<IActionResult> GenerateRegistrationKey()
 		{
+			if (!await IsCurrentUserAdminAsync())
+				return Forbid();
+
 			try
 			{
 				var key = await _firebaseKeyRepos.GenerateRegistrationKeyAsync();
@@ -41,10 +57,12 @@ namespace LBCore.Controllers
 			}
 		}
 
-		// 2. Get all current students (fetch profiles)
 		[HttpGet("students")]
 		public async Task<IActionResult> GetAllStudents()
 		{
+			if (!await IsCurrentUserAdminAsync())
+				return Forbid();
+
 			try
 			{
 				var profiles = await _profileRepos.GetAllProfilesAsync();
@@ -56,18 +74,16 @@ namespace LBCore.Controllers
 			}
 		}
 
-		// 3. Revoke a student's access (log them out and update role)
 		[HttpPost("revoke-access/{uid}")]
 		public async Task<IActionResult> RevokeStudentAccess(string uid)
 		{
+			if (!await IsCurrentUserAdminAsync())
+				return Forbid();
+
 			try
 			{
-				// Log out user
 				await _firebaseAccountRepos.LogoutUserAsync(uid);
-
-				// Optionally, update the role to revoke access (e.g., set role to 'revoked' or similar)
 				await _firebaseAccountRepos.AssignRoleAsync(uid, "revoked");
-
 				return Ok(new { Message = "Access revoked successfully." });
 			}
 			catch (Exception ex)
@@ -76,22 +92,21 @@ namespace LBCore.Controllers
 			}
 		}
 
-		// 4. Update a student's profile
 		[HttpPut("update-profile")]
 		public async Task<IActionResult> UpdateStudentProfile([FromBody] Profiles profile)
 		{
+			if (!await IsCurrentUserAdminAsync())
+				return Forbid();
+
 			try
 			{
-				// Check if the profile exists
 				var existingProfile = await _profileRepos.GetProfileByEmailAsync(profile.Email);
 				if (existingProfile == null)
 				{
 					return NotFound(new { Message = "Profile not found." });
 				}
 
-				// Update profile information
 				await _profileRepos.UpdateProfileAsync(profile);
-
 				return Ok(new { Message = "Profile updated successfully." });
 			}
 			catch (Exception ex)
@@ -99,11 +114,13 @@ namespace LBCore.Controllers
 				return BadRequest(new { Message = ex.Message });
 			}
 		}
-		// Add this method inside your AdminController class
 
 		[HttpGet("keys")]
 		public async Task<IActionResult> GetAllKeys()
 		{
+			if (!await IsCurrentUserAdminAsync())
+				return Forbid();
+
 			try
 			{
 				var keys = await _firebaseKeyRepos.GetAllKeysAsync();
@@ -114,6 +131,5 @@ namespace LBCore.Controllers
 				return BadRequest(new { Message = ex.Message });
 			}
 		}
-
 	}
 }

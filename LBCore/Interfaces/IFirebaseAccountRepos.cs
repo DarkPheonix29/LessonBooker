@@ -13,7 +13,7 @@ namespace LBCore.Interfaces
 		Task AssignRoleAsync(string userId, string role);
 		Task<UserRecord> SignUpAsync(string email, string password, string role);
 		Task<string> LoginAsync(string idToken);
-
+		Task<string?> GetUserRoleAsync(string uid);
 
 	}
 }

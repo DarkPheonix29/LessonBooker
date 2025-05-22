@@ -2,21 +2,39 @@
 using LBCore.Models;
 using LBCore.Managers;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using LBCore.Interfaces;
 
 namespace LBAPI.Controllers
 {
 	[Route("api/[controller]")]
 	[ApiController]
+	[Authorize] // Require authentication for all actions
 	public class ProfileController : ControllerBase
 	{
 		private readonly AccountManager _accountManager;
-		private readonly ILogger<ProfileController> _logger;
+		private readonly IFirebaseAccountRepos _firebaseAccountRepos;
 
-		public ProfileController(AccountManager accountManager, ILogger<ProfileController> logger)
+		public ProfileController(AccountManager accountManager, IFirebaseAccountRepos firebaseAccountRepos)
 		{
 			_accountManager = accountManager;
-			_logger = logger;
+			_firebaseAccountRepos = firebaseAccountRepos;
+		}
+
+		// Helper: Get current user's UID
+		private string? GetCurrentUid()
+		{
+			return User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+		}
+
+		// Helper: Get current user's role
+		private async Task<string?> GetCurrentUserRoleAsync()
+		{
+			var uid = GetCurrentUid();
+			if (string.IsNullOrEmpty(uid))
+				return null;
+			return await _firebaseAccountRepos.GetUserRoleAsync(uid);
 		}
 
 		[HttpGet("{email}")]
@@ -33,36 +51,40 @@ namespace LBAPI.Controllers
 				{
 					return NotFound(new { message = "Profile not found." });
 				}
-				_logger.LogError(ex, "Error retrieving profile for email: {Email}", email);
 				return StatusCode(500, "Internal server error");
 			}
 		}
 
-
-		// Get all profiles
+		// Get all profiles (admin only)
 		[HttpGet]
 		public async Task<IActionResult> GetAllProfiles()
 		{
+			var role = await GetCurrentUserRoleAsync();
+			if (role != "admin")
+				return Forbid();
+
 			var profiles = await _accountManager.GetAllProfilesAsync();
 			return Ok(profiles);
 		}
 
+		// Only authenticated users (with an account) can add a profile
 		[HttpPost]
 		public async Task<IActionResult> AddProfile([FromBody] Profiles profile)
 		{
+			var uid = GetCurrentUid();
+			if (string.IsNullOrEmpty(uid))
+			{
+				return Forbid();
+			}
+
 			if (profile == null)
 			{
-				_logger.LogWarning("Profile object received is null.");
 				return BadRequest("Profile data is required.");
 			}
 
 			try
 			{
-				_logger.LogInformation("Attempting to add profile with email: {Email}", profile.Email);
-
 				await _accountManager.AddProfileAsync(profile);
-				_logger.LogInformation("Profile created successfully for email: {Email}", profile.Email);
-
 				return CreatedAtAction(nameof(GetProfileByEmail), new { email = profile.Email }, profile);
 			}
 			catch (Exception ex)
@@ -71,16 +93,18 @@ namespace LBAPI.Controllers
 				{
 					return Conflict(new { message = "Profile already exists with this email." });
 				}
-				_logger.LogError(ex, "Error occurred while creating profile for email: {Email}", profile.Email);
 				return StatusCode(500, "Internal server error");
 			}
 		}
 
-
-		// Update an existing profile
+		// Update an existing profile (admin only)
 		[HttpPut("{profileId}")]
 		public async Task<IActionResult> UpdateProfile(int profileId, [FromBody] Profiles profile)
 		{
+			var role = await GetCurrentUserRoleAsync();
+			if (role != "admin")
+				return Forbid();
+
 			if (profileId != profile.ProfileId)
 			{
 				return BadRequest("Profile ID mismatch.");
@@ -93,8 +117,6 @@ namespace LBAPI.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error occurred while updating profile with ID: {ProfileId}", profileId);
-
 				if (ex.Message.Contains("Profile not found"))
 				{
 					return NotFound(new { message = "Profile not found." });

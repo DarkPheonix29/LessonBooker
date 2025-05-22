@@ -85,5 +85,24 @@ namespace LBRepository.Repos
 				throw new FirebaseAccountException("Error during log-in.", ex);
 			}
 		}
+		public async Task<string?> GetUserRoleAsync(string uid)
+		{
+			try
+			{
+				var userDoc = await _firestoreDb.Collection("users").Document(uid).GetSnapshotAsync();
+				if (!userDoc.Exists)
+					return null;
+
+				if (userDoc.ContainsField("role"))
+					return userDoc.GetValue<string>("role");
+
+				return null;
+			}
+			catch (Exception ex)
+			{
+				throw new FirebaseAccountException("Error fetching user role.", ex);
+			}
+		}
+
 	}
 }
