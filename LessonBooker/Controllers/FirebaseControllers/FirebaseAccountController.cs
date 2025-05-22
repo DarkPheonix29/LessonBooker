@@ -164,6 +164,7 @@ namespace LessonBooker.Controllers.FirebaseControllers
 			}
 		}
 
+		[Authorize]
 		[HttpGet("me")]
 		public IActionResult Me()
 		{
