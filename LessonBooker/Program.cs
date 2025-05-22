@@ -42,11 +42,20 @@ builder.Services.AddAuthentication("Firebase")
 	.AddCookie("Firebase", options =>
 	{
 		options.Cookie.Name = "LessonBookerAuth";
-		options.Cookie.SameSite = SameSiteMode.None; // Required for cross-origin
-		options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Required for SameSite=None
-																 // Optionally, set domain if needed:
-																 // options.Cookie.Domain = ".yourdomain.com";
+		options.Cookie.SameSite = SameSiteMode.None;
+		options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+		options.Events.OnRedirectToLogin = context =>
+		{
+			context.Response.StatusCode = 401;
+			return Task.CompletedTask;
+		};
+		options.Events.OnRedirectToAccessDenied = context =>
+		{
+			context.Response.StatusCode = 403;
+			return Task.CompletedTask;
+		};
 	});
+
 
 
 builder.Services.AddAuthorization(options =>
