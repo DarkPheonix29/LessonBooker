@@ -26,15 +26,9 @@ jobs:
         run: |
           docker push gcr.io/lessonbooker-8664a/lessonbooker:latest
 
-      - name: Deploy to Cloud Run
+      - name: Deploy new image to Cloud Run
         run: |
-          gcloud run deploy lessonbooker \
+          gcloud run services update lessonbooker \
             --image gcr.io/lessonbooker-8664a/lessonbooker:latest \
             --region europe-west4 \
-            --platform managed \
-            --add-cloudsql-instances lessonbooker-8664a:europe-west4:lessonbooker-db \
-            --set-env-vars ASPNETCORE_ENVIRONMENT=Production \
-            --set-env-vars ConnectionStrings__DefaultConnection="Host=...;Port=5432;Database=LBDB;Username=postgres;Password=\$DB_PASSWORD" \
-            --set-secrets DB_PASSWORD=projects/412093205377/secrets/db-password \
-            --memory 512Mi \
-            --allow-unauthenticated
+            --platform managed
