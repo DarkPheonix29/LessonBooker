@@ -8,13 +8,15 @@ using Xunit;
 using System.Threading.Tasks;
 using LBRepository.Repos;
 using System;
-using Microsoft.Extensions.Logging;
+using Moq;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using LBCore.Interfaces;
 
 namespace LBTesting.Integration
 {
 	public class ProfileControllerTests : IDisposable
 	{
-		private readonly ProfileController _controller;
 		private readonly ApplicationDbContext _context;
 
 		public ProfileControllerTests()
@@ -24,15 +26,37 @@ namespace LBTesting.Integration
 				.Options;
 
 			_context = new ApplicationDbContext(options);
+		}
+
+		// Helper to create controller with a specific role
+		private ProfileController CreateControllerWithRole(string role)
+		{
 			var profileRepos = new ProfileRepos(_context);
 			var accountManager = new AccountManager(profileRepos);
-			var logger = new LoggerFactory().CreateLogger<ProfileController>();
-			_controller = new ProfileController(accountManager, logger);
+
+			var firebaseAccountReposMock = new Mock<IFirebaseAccountRepos>();
+			firebaseAccountReposMock.Setup(r => r.GetUserRoleAsync(It.IsAny<string>())).ReturnsAsync(role);
+
+			var controller = new ProfileController(accountManager, firebaseAccountReposMock.Object);
+
+			var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
+			{
+				new Claim(ClaimTypes.NameIdentifier, "test-uid"),
+				new Claim(ClaimTypes.Role, role)
+			}, "mock"));
+
+			controller.ControllerContext = new ControllerContext
+			{
+				HttpContext = new DefaultHttpContext { User = user }
+			};
+
+			return controller;
 		}
 
 		[Fact]
 		public async Task GetProfileByEmail_ExistingProfile_ReturnsOk()
 		{
+			var controller = CreateControllerWithRole("student"); // Any authenticated user
 			var email = "test@example.com";
 			var profile = new Profiles
 			{
@@ -48,7 +72,7 @@ namespace LBTesting.Integration
 			await _context.AddAsync(profile);
 			await _context.SaveChangesAsync();
 
-			var result = await _controller.GetProfileByEmail(email);
+			var result = await controller.GetProfileByEmail(email);
 
 			var okResult = Assert.IsType<OkObjectResult>(result);
 			var returnValue = Assert.IsType<Profiles>(okResult.Value);
@@ -58,13 +82,15 @@ namespace LBTesting.Integration
 		[Fact]
 		public async Task GetProfileByEmail_NonExistentProfile_ReturnsNotFound()
 		{
-			var result = await _controller.GetProfileByEmail("nonexistent@example.com");
+			var controller = CreateControllerWithRole("student"); // Any authenticated user
+			var result = await controller.GetProfileByEmail("nonexistent@example.com");
 			Assert.IsType<NotFoundObjectResult>(result);
 		}
 
 		[Fact]
 		public async Task GetAllProfiles_ReturnsAllProfiles()
 		{
+			var controller = CreateControllerWithRole("admin"); // Admin only
 			var profile1 = new Profiles
 			{
 				ProfileId = 1,
@@ -90,7 +116,7 @@ namespace LBTesting.Integration
 			await _context.AddAsync(profile2);
 			await _context.SaveChangesAsync();
 
-			var result = await _controller.GetAllProfiles();
+			var result = await controller.GetAllProfiles();
 
 			var okResult = Assert.IsType<OkObjectResult>(result);
 			var profiles = Assert.IsAssignableFrom<System.Collections.Generic.IEnumerable<Profiles>>(okResult.Value);
@@ -101,6 +127,7 @@ namespace LBTesting.Integration
 		[Fact]
 		public async Task AddProfile_ValidProfile_ReturnsCreated()
 		{
+			var controller = CreateControllerWithRole("student"); // Any authenticated user
 			var profile = new Profiles
 			{
 				ProfileId = 3,
@@ -112,7 +139,7 @@ namespace LBTesting.Integration
 				DateOfBirth = new DateTime(1992, 2, 2)
 			};
 
-			var result = await _controller.AddProfile(profile);
+			var result = await controller.AddProfile(profile);
 
 			var createdResult = Assert.IsType<CreatedAtActionResult>(result);
 			var returnValue = Assert.IsType<Profiles>(createdResult.Value);
@@ -122,7 +149,8 @@ namespace LBTesting.Integration
 		[Fact]
 		public async Task AddProfile_NullProfile_ReturnsBadRequest()
 		{
-			var result = await _controller.AddProfile(null);
+			var controller = CreateControllerWithRole("student"); // Any authenticated user
+			var result = await controller.AddProfile(null);
 			var badRequest = Assert.IsType<BadRequestObjectResult>(result);
 			Assert.Equal("Profile data is required.", badRequest.Value);
 		}
@@ -130,6 +158,7 @@ namespace LBTesting.Integration
 		[Fact]
 		public async Task AddProfile_DuplicateEmail_ReturnsConflict()
 		{
+			var controller = CreateControllerWithRole("student"); // Any authenticated user
 			var profile = new Profiles
 			{
 				ProfileId = 4,
@@ -141,7 +170,7 @@ namespace LBTesting.Integration
 				DateOfBirth = new DateTime(1993, 3, 3)
 			};
 
-			await _controller.AddProfile(profile);
+			await controller.AddProfile(profile);
 
 			// Try to add again with the same email
 			var duplicateProfile = new Profiles
@@ -155,7 +184,7 @@ namespace LBTesting.Integration
 				DateOfBirth = new DateTime(1994, 4, 4)
 			};
 
-			var result = await _controller.AddProfile(duplicateProfile);
+			var result = await controller.AddProfile(duplicateProfile);
 
 			Assert.IsType<ConflictObjectResult>(result);
 		}
@@ -163,6 +192,7 @@ namespace LBTesting.Integration
 		[Fact]
 		public async Task UpdateProfile_ExistingProfile_ReturnsNoContent()
 		{
+			var controller = CreateControllerWithRole("admin"); // Admin only
 			var profile = new Profiles
 			{
 				ProfileId = 6,
@@ -179,7 +209,7 @@ namespace LBTesting.Integration
 
 			profile.DisplayName = "Updated Display Name";
 
-			var result = await _controller.UpdateProfile(profile.ProfileId, profile);
+			var result = await controller.UpdateProfile(profile.ProfileId, profile);
 
 			Assert.IsType<NoContentResult>(result);
 		}
@@ -187,6 +217,7 @@ namespace LBTesting.Integration
 		[Fact]
 		public async Task UpdateProfile_ProfileIdMismatch_ReturnsBadRequest()
 		{
+			var controller = CreateControllerWithRole("admin"); // Admin only
 			var profile = new Profiles
 			{
 				ProfileId = 7,
@@ -198,7 +229,7 @@ namespace LBTesting.Integration
 				DateOfBirth = new DateTime(1996, 6, 6)
 			};
 
-			var result = await _controller.UpdateProfile(999, profile);
+			var result = await controller.UpdateProfile(999, profile);
 
 			var badRequest = Assert.IsType<BadRequestObjectResult>(result);
 			Assert.Equal("Profile ID mismatch.", badRequest.Value);
@@ -207,6 +238,7 @@ namespace LBTesting.Integration
 		[Fact]
 		public async Task UpdateProfile_ProfileNotFound_ReturnsNotFound()
 		{
+			var controller = CreateControllerWithRole("admin"); // Admin only
 			var profile = new Profiles
 			{
 				ProfileId = 99,
@@ -218,7 +250,7 @@ namespace LBTesting.Integration
 				DateOfBirth = new DateTime(2000, 1, 1)
 			};
 
-			var result = await _controller.UpdateProfile(99, profile);
+			var result = await controller.UpdateProfile(99, profile);
 
 			Assert.IsType<NotFoundObjectResult>(result);
 		}
