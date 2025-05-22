@@ -15,24 +15,17 @@ var builder = WebApplication.CreateBuilder(args);
 // --- Firebase Initialization ---
 FirebaseConfig.InitializeFirebase();
 
-
 // Register FirebaseAuth for DI
 builder.Services.AddScoped<FirebaseAuth>(_ => FirebaseAuth.DefaultInstance);
 
 // --- Add DbContext Configuration ---
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-var env = builder.Environment.EnvironmentName;
-
-if (env == "Development")
+if (string.IsNullOrWhiteSpace(connectionString))
 {
-	builder.Services.AddDbContext<ApplicationDbContext>(options =>
-		options.UseNpgsql(connectionString));
+	throw new InvalidOperationException("Database connection string is not configured.");
 }
-else
-{
-	// ?? TODO: Add production DB connection here
-	throw new InvalidOperationException("Production database configuration not defined.");
-}
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+	options.UseNpgsql(connectionString));
 
 // --- Dependency Injection for Repositories and Managers ---
 builder.Services.AddScoped<IFirebaseAccountRepos, FirebaseAccountRepos>();
