@@ -129,13 +129,24 @@ namespace LessonBooker.Controllers.FirebaseControllers
 
 		[Authorize]
 		[HttpGet("me")]
-		public IActionResult Me()
+		public async Task<IActionResult> Me()
 		{
 			var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("user_id")?.Value;
 			var email = User.FindFirst(ClaimTypes.Email)?.Value;
-			var role = User.FindFirst(ClaimTypes.Role)?.Value;
+
+			// Fetch role from Firestore
+			var userDoc = _firestoreDb.Collection("users").Document(uid);
+			var userSnapshot = await userDoc.GetSnapshotAsync();
+			string role = null;
+			if (userSnapshot.Exists)
+			{
+				var userData = userSnapshot.ToDictionary();
+				role = userData.ContainsKey("role") ? userData["role"].ToString() : null;
+			}
+
 			return Ok(new { uid, email, role });
 		}
+
 	}
 
 	public class SignUpRequest
