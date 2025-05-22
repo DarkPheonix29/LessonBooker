@@ -1,0 +1,31 @@
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=LBDB
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=thepasswordispassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  lessonbooker:
+    build:
+      context: .
+      dockerfile: LessonBooker/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=LBDB;Username=postgres;Password=thepasswordispassword
+      - FIREBASE_CREDENTIAL_PATH=/run/secrets/firebase-key.json
+    volumes:
+      - C:\Users\keala\Secrets\lessonbooker-8664a-firebase-adminsdk-fbsvc-084410c095.json:/run/secrets/firebase-key.json:ro
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
