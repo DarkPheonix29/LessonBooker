@@ -40,24 +40,19 @@ builder.Services.AddScoped<IFirebaseKeyRepos, FirebaseKeyRepos>();
 builder.Services.AddScoped<IProfileRepos, ProfileRepos>();
 
 // --- Authentication and Authorization ---
-;
-
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
 	{
-		options.Authority = "https://securetoken.google.com/YOUR_FIREBASE_PROJECT_ID";
+		options.Authority = "https://securetoken.google.com/lessonbooker-8664a";
 		options.TokenValidationParameters = new TokenValidationParameters
 		{
 			ValidateIssuer = true,
-			ValidIssuer = "https://securetoken.google.com/YOUR_FIREBASE_PROJECT_ID",
+			ValidIssuer = "https://securetoken.google.com/lessonbooker-8664a",
 			ValidateAudience = true,
-			ValidAudience = "YOUR_FIREBASE_PROJECT_ID",
+			ValidAudience = "lessonbooker-8664a",
 			ValidateLifetime = true
 		};
 	});
-
-
-
 
 builder.Services.AddAuthorization(options =>
 {
@@ -85,11 +80,10 @@ builder.Services.AddCors(options =>
 	{
 		policy.WithOrigins("https://lessonbooker-8664a.web.app")
 			  .AllowAnyHeader()
-			  .AllowAnyMethod()
-			  .AllowCredentials();
+			  .AllowAnyMethod();
+		// No AllowCredentials needed for JWT Bearer
 	});
 });
-
 
 // --- Build and Configure the HTTP Request Pipeline ---
 var app = builder.Build();
