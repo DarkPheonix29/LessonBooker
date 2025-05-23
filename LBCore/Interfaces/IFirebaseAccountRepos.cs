@@ -14,6 +14,7 @@ namespace LBCore.Interfaces
 		Task<UserRecord> SignUpAsync(string email, string password, string role);
 		Task<string> LoginAsync(string idToken);
 		Task<string?> GetUserRoleAsync(string uid);
+		Task DeleteUserAsync(string uid);
 
 	}
 }

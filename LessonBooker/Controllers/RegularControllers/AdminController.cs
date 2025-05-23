@@ -118,15 +118,15 @@ namespace LBCore.Controllers
 
 			try
 			{
-				await _firebaseAccountRepos.LogoutUserAsync(uid);
-				await _firebaseAccountRepos.AssignRoleAsync(uid, "revoked");
-				return Ok(new { Message = "Access revoked successfully." });
+				await _firebaseAccountRepos.DeleteUserAsync(uid);
+				return Ok(new { Message = "User deleted from Firebase Authentication." });
 			}
 			catch (Exception ex)
 			{
 				return BadRequest(new { Message = ex.Message });
 			}
 		}
+
 
 		[HttpPut("update-profile")]
 		public async Task<IActionResult> UpdateStudentProfile([FromBody] Profiles profile)

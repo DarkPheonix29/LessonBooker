@@ -103,6 +103,17 @@ namespace LBRepository.Repos
 				throw new FirebaseAccountException("Error fetching user role.", ex);
 			}
 		}
+		public async Task DeleteUserAsync(string uid)
+		{
+			try
+			{
+				await _auth.DeleteUserAsync(uid);
+			}
+			catch (Exception ex)
+			{
+				throw new FirebaseAccountException("Error deleting user.", ex);
+			}
+		}
 
 	}
 }
