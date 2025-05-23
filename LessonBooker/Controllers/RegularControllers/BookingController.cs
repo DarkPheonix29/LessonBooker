@@ -88,7 +88,7 @@ namespace LessonBooker.Controllers.RegularControllers
 		{
 			// Only student can remove
 			var role = await GetCurrentUserRoleAsync();
-			if (role != "student")
+			if (role != "admin")
 				return Forbid();
 
 			await _calendarManager.RemoveBookingAsync(id);

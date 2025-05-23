@@ -7,6 +7,7 @@ using LBCore.Interfaces;
 using LBCore.Models;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Google.Cloud.Firestore;
 
 namespace LBCore.Controllers
 {
@@ -66,7 +67,42 @@ namespace LBCore.Controllers
 			try
 			{
 				var profiles = await _profileRepos.GetAllProfilesAsync();
-				return Ok(profiles);
+				var firestore = FirestoreFactory.GetFirestoreDb(); // Use your factory or inject FirestoreDb
+				var studentsWithUid = new List<Dictionary<string, object>>();
+
+				foreach (var profile in profiles)
+				{
+					string uid = null;
+					string role = null;
+
+					// Query Firestore for the user by email
+					var userQuery = await firestore.Collection("users")
+						.WhereEqualTo("email", profile.Email)
+						.Limit(1)
+						.GetSnapshotAsync();
+
+					if (userQuery.Documents.Count > 0)
+					{
+						var userDoc = userQuery.Documents[0];
+						uid = userDoc.Id;
+						if (userDoc.ContainsField("role"))
+							role = userDoc.GetValue<string>("role");
+					}
+
+					// Only add if role is "student"
+					if (role == "student")
+					{
+						var profileWithUid = new Dictionary<string, object>();
+						foreach (var prop in profile.GetType().GetProperties())
+						{
+							profileWithUid[prop.Name] = prop.GetValue(profile);
+						}
+						profileWithUid["uid"] = uid;
+						studentsWithUid.Add(profileWithUid);
+					}
+				}
+
+				return Ok(studentsWithUid);
 			}
 			catch (Exception ex)
 			{
