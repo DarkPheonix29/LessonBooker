@@ -100,7 +100,7 @@ namespace LessonBooker.Controllers.RegularControllers
 		{
 			// Both instructor and student can access
 			var role = await GetCurrentUserRoleAsync();
-			if (role != "instructor" && role != "student")
+			if (role != "instructor" && role != "student" && role != "admin")
 				return Forbid();
 
 			var bookings = await _calendarManager.GetAllBookingsAsync();
