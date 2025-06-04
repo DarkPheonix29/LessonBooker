@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using LBCore.Interfaces;
+using LessonBooker.Hubs; // Add this
+using Microsoft.AspNetCore.SignalR; // Add this
 
 namespace LessonBooker.Controllers.RegularControllers
 {
@@ -15,11 +17,16 @@ namespace LessonBooker.Controllers.RegularControllers
 	{
 		private readonly CalendarManager _calendarManager;
 		private readonly IFirebaseAccountRepos _firebaseAccountRepos;
+		private readonly IHubContext<CalendarHub> _hubContext; // Add this
 
-		public AvailabilityController(CalendarManager calendarManager, IFirebaseAccountRepos firebaseAccountRepos)
+		public AvailabilityController(
+			CalendarManager calendarManager,
+			IFirebaseAccountRepos firebaseAccountRepos,
+			IHubContext<CalendarHub> hubContext) // Add this
 		{
 			_calendarManager = calendarManager;
 			_firebaseAccountRepos = firebaseAccountRepos;
+			_hubContext = hubContext; // Add this
 		}
 
 		// Helper: Get current user's role
@@ -58,6 +65,10 @@ namespace LessonBooker.Controllers.RegularControllers
 				return Forbid();
 
 			await _calendarManager.AddAvailabilityAsync(availability);
+
+			// Notify all clients about the update
+			await _hubContext.Clients.All.SendAsync("CalendarUpdated");
+
 			return CreatedAtAction(nameof(GetAvailability), new { instructorEmail = availability.InstructorEmail }, availability);
 		}
 
@@ -71,6 +82,10 @@ namespace LessonBooker.Controllers.RegularControllers
 				return Forbid();
 
 			await _calendarManager.RemoveAvailabilityAsync(id);
+
+			// Notify all clients about the update
+			await _hubContext.Clients.All.SendAsync("CalendarUpdated");
+
 			return NoContent();
 		}
 

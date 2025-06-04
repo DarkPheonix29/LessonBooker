@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using LBCore.Interfaces;
+using LessonBooker.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace LessonBooker.Controllers.RegularControllers
 {
@@ -15,11 +17,13 @@ namespace LessonBooker.Controllers.RegularControllers
 	{
 		private readonly CalendarManager _calendarManager;
 		private readonly IFirebaseAccountRepos _firebaseAccountRepos;
+		private readonly IHubContext<CalendarHub> _hubContext;
 
-		public BookingController(CalendarManager calendarManager, IFirebaseAccountRepos firebaseAccountRepos)
+		public BookingController(CalendarManager calendarManager, IFirebaseAccountRepos firebaseAccountRepos, IHubContext<CalendarHub> hubContext)
 		{
 			_calendarManager = calendarManager;
 			_firebaseAccountRepos = firebaseAccountRepos;
+			_hubContext = hubContext;
 		}
 
 		// Helper: Get current user's role
@@ -79,6 +83,8 @@ namespace LessonBooker.Controllers.RegularControllers
 			{
 				return BadRequest("Booking conflict with another instructor or time slot.");
 			}
+
+			await _hubContext.Clients.All.SendAsync("CalendarUpdated");
 			return CreatedAtAction(nameof(GetBookingsByInstructor), new { instructorEmail = booking.InstructorEmail }, booking);
 		}
 

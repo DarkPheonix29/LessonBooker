@@ -64,6 +64,7 @@ builder.Services.AddAuthorization(options =>
 
 // --- Add Controllers and Swagger ---
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Logging.ClearProviders();
@@ -105,5 +106,6 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<LessonBooker.Hubs.CalendarHub>("/calendarHub");
 
 app.Run();
