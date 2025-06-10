@@ -66,7 +66,9 @@ namespace LBCore.Controllers
 		public async Task<IActionResult> GetAllStudents()
 		{
 			if (!await IsCurrentUserAdminAsync())
+			{
 				return Forbid();
+			}
 
 			try
 			{
@@ -140,7 +142,9 @@ namespace LBCore.Controllers
 		public async Task<IActionResult> UpdateStudentProfile([FromBody] Profiles profile)
 		{
 			if (!await IsCurrentUserAdminAsync())
+			{
 				return Forbid();
+			}
 
 			try
 			{
@@ -163,7 +167,9 @@ namespace LBCore.Controllers
 		public async Task<IActionResult> GetAllKeys()
 		{
 			if (!await IsCurrentUserAdminAsync())
+			{
 				return Forbid();
+			}
 
 			try
 			{
