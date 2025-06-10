@@ -33,7 +33,9 @@ namespace LBAPI.Controllers
 		{
 			var uid = GetCurrentUid();
 			if (string.IsNullOrEmpty(uid))
+			{
 				return null;
+			}
 			return await _firebaseAccountRepos.GetUserRoleAsync(uid);
 		}
 
@@ -61,7 +63,9 @@ namespace LBAPI.Controllers
 		{
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "admin")
+			{
 				return Forbid();
+			}
 
 			var profiles = await _accountManager.GetAllProfilesAsync();
 			return Ok(profiles);

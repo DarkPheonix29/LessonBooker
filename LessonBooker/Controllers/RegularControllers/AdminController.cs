@@ -35,7 +35,9 @@ namespace LBCore.Controllers
 		{
 			var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(uid))
+			{
 				return false;
+			}
 
 			var role = await _firebaseAccountRepos.GetUserRoleAsync(uid);
 			return role == "admin";
@@ -45,7 +47,9 @@ namespace LBCore.Controllers
 		public async Task<IActionResult> GenerateRegistrationKey()
 		{
 			if (!await IsCurrentUserAdminAsync())
+			{
 				return Forbid();
+			}
 
 			try
 			{
@@ -86,7 +90,9 @@ namespace LBCore.Controllers
 						var userDoc = userQuery.Documents[0];
 						uid = userDoc.Id;
 						if (userDoc.ContainsField("role"))
+						{
 							role = userDoc.GetValue<string>("role");
+						}
 					}
 
 					// Only add if role is "student"

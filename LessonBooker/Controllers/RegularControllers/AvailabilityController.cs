@@ -34,7 +34,9 @@ namespace LessonBooker.Controllers.RegularControllers
 		{
 			var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(uid))
+			{
 				return null;
+			}
 			return await _firebaseAccountRepos.GetUserRoleAsync(uid);
 		}
 
@@ -45,7 +47,9 @@ namespace LessonBooker.Controllers.RegularControllers
 			// Both instructor and student can access
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "instructor" && role != "student")
+			{
 				return Forbid();
+			}
 
 			var availability = await _calendarManager.GetAvailabilityByInstructorAsync(instructorEmail);
 			if (availability == null || availability.Count == 0)
@@ -62,7 +66,9 @@ namespace LessonBooker.Controllers.RegularControllers
 			// Only instructor can add
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "instructor")
+			{
 				return Forbid();
+			}
 
 			await _calendarManager.AddAvailabilityAsync(availability);
 

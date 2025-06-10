@@ -31,7 +31,9 @@ namespace LessonBooker.Controllers.RegularControllers
 		{
 			var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(uid))
+			{
 				return null;
+			}
 			return await _firebaseAccountRepos.GetUserRoleAsync(uid);
 		}
 
@@ -42,7 +44,9 @@ namespace LessonBooker.Controllers.RegularControllers
 			// Both instructor and student can access
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "instructor" && role != "student")
+			{
 				return Forbid();
+			}
 
 			var bookings = await _calendarManager.GetBookingsByInstructorAsync(instructorEmail);
 			if (bookings == null || bookings.Count == 0)
@@ -76,7 +80,9 @@ namespace LessonBooker.Controllers.RegularControllers
 			// Only student can add
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "student")
+			{
 				return Forbid();
+			}
 
 			var success = await _calendarManager.AddBookingAsync(booking);
 			if (!success)
@@ -95,7 +101,9 @@ namespace LessonBooker.Controllers.RegularControllers
 			// Only student can remove
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "admin")
+			{
 				return Forbid();
+			}
 
 			await _calendarManager.RemoveBookingAsync(id);
 			return NoContent();
@@ -107,7 +115,9 @@ namespace LessonBooker.Controllers.RegularControllers
 			// Both instructor and student can access
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "instructor" && role != "student" && role != "admin")
+			{
 				return Forbid();
+			}
 
 			var bookings = await _calendarManager.GetAllBookingsAsync();
 			return Ok(bookings);

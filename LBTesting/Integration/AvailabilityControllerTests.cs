@@ -26,7 +26,9 @@ namespace LBTesting.Integration
 			var hubContext = new Mock<IHubContext<LessonBooker.Hubs.CalendarHub>>();
 
 			if (calendarManager == null)
+			{
 				calendarManager = new CalendarManager(bookingRepos.Object, availabilityRepos.Object);
+			}
 
 			if (firebaseAccountRepos == null)
 			{
