@@ -92,5 +92,38 @@ namespace LBTesting.Integration
 			Assert.NotNull(messageProp);
 			Assert.Equal("fail", messageProp.GetValue(badRequest.Value)?.ToString());
 		}
+
+		[Fact]
+		public async Task GenerateRegistrationKey_Admin_ReturnsOk()
+		{
+			var controller = CreateAdminController();
+			_mockKeyRepos.Setup(r => r.GenerateRegistrationKeyAsync()).ReturnsAsync("test-key");
+
+			var result = await controller.GenerateRegistrationKey();
+
+			var okResult = Assert.IsType<OkObjectResult>(result);
+			Assert.Equal("test-key", okResult.Value.GetType().GetProperty("Key")?.GetValue(okResult.Value));
+		}
+
+		[Fact]
+		public async Task GenerateRegistrationKey_NotAdmin_ReturnsForbid()
+		{
+			_mockAccountRepos.Setup(r => r.GetUserRoleAsync(It.IsAny<string>())).ReturnsAsync("student");
+			var controller = new AdminController(_mockKeyRepos.Object, _mockAccountRepos.Object, _mockProfileRepos.Object);
+
+			var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
+			{
+				new Claim(ClaimTypes.NameIdentifier, "student-uid"),
+				new Claim(ClaimTypes.Role, "student")
+			}, "mock"));
+
+			controller.ControllerContext = new ControllerContext
+			{
+				HttpContext = new DefaultHttpContext { User = user }
+			};
+
+			var result = await controller.GenerateRegistrationKey();
+			Assert.IsType<ForbidResult>(result);
+		}
 	}
 }

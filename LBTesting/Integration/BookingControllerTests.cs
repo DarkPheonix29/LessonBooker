@@ -1,212 +1,194 @@
-﻿using LBRepository;
-using LBRepository.Repos;
+﻿using LessonBooker.Controllers.RegularControllers;
+using LBCore.Managers;
 using LBCore.Models;
-using Microsoft.EntityFrameworkCore;
-using System;
+using LBCore.Interfaces;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Xunit;
-using System.Linq;
+using System.Collections.Generic;
+using System;
 
 namespace LBTesting.Integration
 {
-	public class BookingReposTests : IDisposable
+	public class BookingControllerTests
 	{
-		private readonly ApplicationDbContext _context;
-		private readonly BookingRepos _repo;
-
-		public BookingReposTests()
+		private static BookingController CreateController(
+			string role,
+			CalendarManager? calendarManager = null,
+			IFirebaseAccountRepos? firebaseAccountRepos = null)
 		{
-			var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-				.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-				.Options;
-			_context = new ApplicationDbContext(options);
-			_repo = new BookingRepos(_context);
-		}
+			var bookingRepos = new Mock<IBookingRepos>();
+			var availabilityRepos = new Mock<IAvailabilityRepos>();
+			var hubContext = new Mock<IHubContext<LessonBooker.Hubs.CalendarHub>>();
 
-		[Fact]
-		public async Task AddBookingAsync_ValidBooking_ReturnsTrueAndPersists()
-		{
-			var booking = new Booking
+			if (calendarManager == null)
+				calendarManager = new CalendarManager(bookingRepos.Object, availabilityRepos.Object);
+
+			if (firebaseAccountRepos == null)
 			{
-				StudentEmail = "student@example.com",
-				InstructorEmail = "instructor@example.com",
-				Start = DateTime.UtcNow.Date.AddDays(1).AddHours(10),
-				End = DateTime.UtcNow.Date.AddDays(1).AddHours(11)
+				var firebaseMock = new Mock<IFirebaseAccountRepos>();
+				firebaseMock.Setup(x => x.GetUserRoleAsync(It.IsAny<string>())).ReturnsAsync(role);
+				firebaseAccountRepos = firebaseMock.Object;
+			}
+
+			var controller = new BookingController(calendarManager, firebaseAccountRepos, hubContext.Object);
+
+			var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
+			{
+				new Claim(ClaimTypes.NameIdentifier, "test-uid"),
+				new Claim(ClaimTypes.Role, role)
+			}, "mock"));
+
+			controller.ControllerContext = new ControllerContext
+			{
+				HttpContext = new DefaultHttpContext { User = user }
 			};
 
-			_context.Availability.Add(new Availability
-			{
-				InstructorEmail = "instructor@example.com",
-				Start = booking.Start.Date.AddHours(9),
-				End = booking.Start.Date.AddHours(17)
-			});
-			await _context.SaveChangesAsync();
-
-			var result = await _repo.AddBookingAsync(booking);
-
-			Assert.True(result);
-			Assert.NotNull(await _context.Bookings.FirstOrDefaultAsync(b => b.StudentEmail == "student@example.com"));
+			return controller;
 		}
 
 		[Fact]
-		public async Task AddBookingAsync_InvalidDuration_ReturnsFalse()
+		public async Task GetBookingsByInstructor_StudentRole_ReturnsOk()
 		{
-			var booking = new Booking
+			var bookings = new List<Booking> { new Booking { bookingId = 1, InstructorEmail = "i", StudentEmail = "s", Start = DateTime.UtcNow, End = DateTime.UtcNow.AddHours(1) } };
+			var bookingRepos = new Mock<IBookingRepos>();
+			bookingRepos.Setup(x => x.GetBookingsByInstructorAsync(It.IsAny<string>())).ReturnsAsync(bookings);
+			var calendarManager = new CalendarManager(bookingRepos.Object, new Mock<IAvailabilityRepos>().Object);
+
+			var controller = CreateController("student", calendarManager);
+
+			var result = await controller.GetBookingsByInstructor("i");
+			Assert.IsType<OkObjectResult>(result);
+		}
+
+		[Fact]
+		public async Task GetBookingsByInstructor_ForbiddenRole_ReturnsForbid()
+		{
+			var controller = CreateController("other");
+			var result = await controller.GetBookingsByInstructor("i");
+			Assert.IsType<ForbidResult>(result);
+		}
+
+		[Fact]
+		public async Task GetBookingsByInstructor_NoBookings_ReturnsNotFound()
+		{
+			var bookingRepos = new Mock<IBookingRepos>();
+			bookingRepos.Setup(x => x.GetBookingsByInstructorAsync(It.IsAny<string>())).ReturnsAsync(new List<Booking>());
+			var calendarManager = new CalendarManager(bookingRepos.Object, new Mock<IAvailabilityRepos>().Object);
+
+			var controller = CreateController("student", calendarManager);
+
+			var result = await controller.GetBookingsByInstructor("i");
+			Assert.IsType<NotFoundObjectResult>(result);
+		}
+
+		[Fact]
+		public async Task AddBooking_StudentRole_Success()
+		{
+			var bookingRepos = new Mock<IBookingRepos>();
+			bookingRepos.Setup(x => x.AddBookingAsync(It.IsAny<Booking>())).ReturnsAsync(true);
+			var calendarManager = new CalendarManager(bookingRepos.Object, new Mock<IAvailabilityRepos>().Object);
+
+			var firebaseMock = new Mock<IFirebaseAccountRepos>();
+			firebaseMock.Setup(x => x.GetUserRoleAsync(It.IsAny<string>())).ReturnsAsync("student");
+
+			// Properly mock hub context
+			var mockClients = new Mock<IHubClients>();
+			var mockClientProxy = new Mock<IClientProxy>();
+			mockClientProxy
+				.Setup(x => x.SendCoreAsync(It.IsAny<string>(), It.IsAny<object[]>(), default))
+				.Returns(Task.CompletedTask);
+			mockClients.Setup(x => x.All).Returns(mockClientProxy.Object);
+			var mockHubContext = new Mock<IHubContext<LessonBooker.Hubs.CalendarHub>>();
+			mockHubContext.Setup(x => x.Clients).Returns(mockClients.Object);
+
+			var controller = new BookingController(calendarManager, firebaseMock.Object, mockHubContext.Object);
+
+			controller.ControllerContext = new ControllerContext
 			{
-				StudentEmail = "student@example.com",
-				InstructorEmail = "instructor@example.com",
-				Start = DateTime.UtcNow.Date.AddDays(1).AddHours(10),
-				End = DateTime.UtcNow.Date.AddDays(1).AddHours(10).AddMinutes(30) // 30 min, invalid
+				HttpContext = new DefaultHttpContext
+				{
+					User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+					{
+						new Claim(ClaimTypes.NameIdentifier, "test-uid"),
+						new Claim(ClaimTypes.Role, "student")
+					}, "mock"))
+				}
 			};
 
-			_context.Availability.Add(new Availability
-			{
-				InstructorEmail = "instructor@example.com",
-				Start = booking.Start.Date.AddHours(9),
-				End = booking.Start.Date.AddHours(17)
-			});
-			await _context.SaveChangesAsync();
-
-			var result = await _repo.AddBookingAsync(booking);
-
-			Assert.False(result);
-			Assert.Null(await _context.Bookings.FirstOrDefaultAsync(b => b.StudentEmail == "student@example.com"));
+			var booking = new Booking { bookingId = 1, InstructorEmail = "i", StudentEmail = "s", Start = DateTime.UtcNow, End = DateTime.UtcNow.AddHours(1) };
+			var result = await controller.AddBooking(booking);
+			Assert.IsType<CreatedAtActionResult>(result);
 		}
 
 		[Fact]
-		public async Task AddBookingAsync_NoAvailability_ReturnsFalse()
+		public async Task AddBooking_StudentRole_Conflict()
 		{
-			var booking = new Booking
-			{
-				StudentEmail = "student@example.com",
-				InstructorEmail = "instructor@example.com",
-				Start = DateTime.UtcNow.Date.AddDays(1).AddHours(10),
-				End = DateTime.UtcNow.Date.AddDays(1).AddHours(11)
-			};
+			var booking = new Booking { bookingId = 1, InstructorEmail = "i", StudentEmail = "s", Start = DateTime.UtcNow, End = DateTime.UtcNow.AddHours(1) };
+			var bookingRepos = new Mock<IBookingRepos>();
+			bookingRepos.Setup(x => x.AddBookingAsync(It.IsAny<Booking>())).ReturnsAsync(false);
+			var calendarManager = new CalendarManager(bookingRepos.Object, new Mock<IAvailabilityRepos>().Object);
 
-			// No availability added
-			var result = await _repo.AddBookingAsync(booking);
+			var controller = CreateController("student", calendarManager);
 
-			Assert.False(result);
+			var result = await controller.AddBooking(booking);
+			var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+			Assert.Contains("Booking conflict", badRequest.Value.ToString());
 		}
 
 		[Fact]
-		public async Task AddBookingAsync_OverlappingBooking_ReturnsFalse()
+		public async Task AddBooking_NonStudentRole_ReturnsForbid()
 		{
-			var start = DateTime.UtcNow.Date.AddDays(2).AddHours(10);
-			var end = start.AddHours(1);
-
-			_context.Availability.Add(new Availability
-			{
-				InstructorEmail = "instructor@example.com",
-				Start = start.Date.AddHours(9),
-				End = start.Date.AddHours(17)
-			});
-			await _context.SaveChangesAsync();
-
-			var booking1 = new Booking
-			{
-				StudentEmail = "student1@example.com",
-				InstructorEmail = "instructor@example.com",
-				Start = start,
-				End = end
-			};
-			await _repo.AddBookingAsync(booking1);
-
-			var booking2 = new Booking
-			{
-				StudentEmail = "student2@example.com",
-				InstructorEmail = "instructor@example.com",
-				Start = start.AddMinutes(30),
-				End = end.AddMinutes(30)
-			};
-
-			var result = await _repo.AddBookingAsync(booking2);
-			Assert.False(result);
+			var controller = CreateController("instructor");
+			var booking = new Booking();
+			var result = await controller.AddBooking(booking);
+			Assert.IsType<ForbidResult>(result);
 		}
 
 		[Fact]
-		public async Task GetBookingsByInstructorAsync_ReturnsBookings()
+		public async Task RemoveBooking_AdminRole_ReturnsNoContent()
 		{
-			var booking = new Booking
-			{
-				StudentEmail = "student@example.com",
-				InstructorEmail = "instructor2@example.com",
-				Start = DateTime.UtcNow.Date.AddDays(3).AddHours(10),
-				End = DateTime.UtcNow.Date.AddDays(3).AddHours(11)
-			};
-			_context.Bookings.Add(booking);
-			await _context.SaveChangesAsync();
+			var bookingRepos = new Mock<IBookingRepos>();
+			bookingRepos.Setup(x => x.RemoveBookingAsync(It.IsAny<int>())).Returns(Task.CompletedTask);
+			var calendarManager = new CalendarManager(bookingRepos.Object, new Mock<IAvailabilityRepos>().Object);
 
-			var bookings = await _repo.GetBookingsByInstructorAsync("instructor2@example.com");
-			Assert.Single(bookings);
-			Assert.Equal("student@example.com", bookings[0].StudentEmail);
+			var controller = CreateController("admin", calendarManager);
+
+			var result = await controller.RemoveBooking(1);
+			Assert.IsType<NoContentResult>(result);
 		}
 
 		[Fact]
-		public async Task GetBookingsByStudentAsync_ReturnsBookings()
+		public async Task RemoveBooking_NonAdminRole_ReturnsForbid()
 		{
-			var booking = new Booking
-			{
-				StudentEmail = "student3@example.com",
-				InstructorEmail = "instructor3@example.com",
-				Start = DateTime.UtcNow.Date.AddDays(4).AddHours(10),
-				End = DateTime.UtcNow.Date.AddDays(4).AddHours(11)
-			};
-			_context.Bookings.Add(booking);
-			await _context.SaveChangesAsync();
-
-			var bookings = await _repo.GetBookingsByStudentAsync("student3@example.com");
-			Assert.Single(bookings);
-			Assert.Equal("instructor3@example.com", bookings[0].InstructorEmail);
+			var controller = CreateController("student");
+			var result = await controller.RemoveBooking(1);
+			Assert.IsType<ForbidResult>(result);
 		}
 
 		[Fact]
-		public async Task RemoveBookingAsync_RemovesBooking()
+		public async Task GetAllBookings_StudentRole_ReturnsOk()
 		{
-			var booking = new Booking
-			{
-				StudentEmail = "student4@example.com",
-				InstructorEmail = "instructor4@example.com",
-				Start = DateTime.UtcNow.Date.AddDays(5).AddHours(10),
-				End = DateTime.UtcNow.Date.AddDays(5).AddHours(11)
-			};
-			_context.Bookings.Add(booking);
-			await _context.SaveChangesAsync();
+			var bookingRepos = new Mock<IBookingRepos>();
+			bookingRepos.Setup(x => x.GetAllBookingsAsync()).ReturnsAsync(new List<Booking>());
+			var calendarManager = new CalendarManager(bookingRepos.Object, new Mock<IAvailabilityRepos>().Object);
 
-			await _repo.RemoveBookingAsync(booking.bookingId);
+			var controller = CreateController("student", calendarManager);
 
-			var found = await _context.Bookings.FindAsync(booking.bookingId);
-			Assert.Null(found);
+			var result = await controller.GetAllBookings();
+			Assert.IsType<OkObjectResult>(result);
 		}
 
 		[Fact]
-		public async Task RemoveBookingAsync_NonExistent_DoesNotThrow()
+		public async Task GetAllBookings_ForbiddenRole_ReturnsForbid()
 		{
-			// Should not throw if booking does not exist
-			var ex = await Record.ExceptionAsync(() => _repo.RemoveBookingAsync(99999));
-			Assert.Null(ex);
-		}
-
-		[Fact]
-		public async Task GetAllBookingsAsync_ReturnsAll()
-		{
-			_context.Bookings.Add(new Booking
-			{
-				StudentEmail = "student5@example.com",
-				InstructorEmail = "instructor5@example.com",
-				Start = DateTime.UtcNow.Date.AddDays(6).AddHours(10),
-				End = DateTime.UtcNow.Date.AddDays(6).AddHours(11)
-			});
-			await _context.SaveChangesAsync();
-
-			var bookings = await _repo.GetAllBookingsAsync();
-			Assert.NotEmpty(bookings);
-		}
-
-		public void Dispose()
-		{
-			_context.Dispose();
+			var controller = CreateController("other");
+			var result = await controller.GetAllBookings();
+			Assert.IsType<ForbidResult>(result);
 		}
 	}
 }
