@@ -120,7 +120,9 @@ namespace LBCore.Controllers
 		public async Task<IActionResult> RevokeStudentAccess(string uid)
 		{
 			if (!await IsCurrentUserAdminAsync())
+			{
 				return Forbid();
+			}
 
 			try
 			{

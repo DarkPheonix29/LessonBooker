@@ -85,7 +85,9 @@ namespace LessonBooker.Controllers.RegularControllers
 			// Only instructor can remove
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "instructor")
+			{
 				return Forbid();
+			}
 
 			await _calendarManager.RemoveAvailabilityAsync(id);
 
@@ -101,7 +103,9 @@ namespace LessonBooker.Controllers.RegularControllers
 			// Both instructor and student can access
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "instructor" && role != "student")
+			{
 				return Forbid();
+			}
 
 			var availabilityList = await _calendarManager.GetAllAvailabilityAsync();
 			return Ok(availabilityList);

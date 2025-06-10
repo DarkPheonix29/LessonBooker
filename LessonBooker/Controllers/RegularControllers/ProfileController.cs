@@ -107,7 +107,9 @@ namespace LBAPI.Controllers
 		{
 			var role = await GetCurrentUserRoleAsync();
 			if (role != "admin")
+			{
 				return Forbid();
+			}
 
 			if (profileId != profile.ProfileId)
 			{
