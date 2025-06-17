@@ -51,7 +51,7 @@ public class BookingRepos : IBookingRepos
 	private bool IsValidDuration(Booking booking)
 	{
 		var duration = booking.End - booking.Start;
-		return duration.TotalHours == 1 || duration.TotalHours == 2;
+		return duration.TotalHours == 1 || duration.TotalHours == 1.5;
 	}
 
 	private async Task<bool> FitsInAvailabilityAsync(Booking booking)

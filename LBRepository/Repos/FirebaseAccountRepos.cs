@@ -107,13 +107,16 @@ namespace LBRepository.Repos
 		{
 			try
 			{
+				// Delete from Firebase Authentication
 				await _auth.DeleteUserAsync(uid);
+
+				// Delete from Firestore "users" collection
+				await _firestoreDb.Collection("users").Document(uid).DeleteAsync();
 			}
 			catch (Exception ex)
 			{
 				throw new FirebaseAccountException("Error deleting user.", ex);
 			}
 		}
-
 	}
 }
