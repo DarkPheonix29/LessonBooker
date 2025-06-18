@@ -81,8 +81,8 @@ builder.Services.AddCors(options =>
 	{
 		policy.WithOrigins("https://lessonbooker-8664a.web.app")
 			  .AllowAnyHeader()
-			  .AllowAnyMethod();
-		// No AllowCredentials needed for JWT Bearer
+			  .AllowAnyMethod()
+			  .AllowCredentials(); // <-- Add this line
 	});
 });
 
